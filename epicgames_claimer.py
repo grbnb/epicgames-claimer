@@ -514,24 +514,24 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
         raise ValueError("Must input both username and password.")
     if args.username == None and args.password != None:
         raise ValueError("Must input both username and password.")
+    args.interactive = True if args.username == None else False
+    args.data_dir = "User_Data/Default" if args.interactive else "User_Data/{}".format(args.username)
     args.once = True
     return args
 
 
 def main() -> None:
     args = get_args()
-    interactive = True if args.username == None else False
-    data_dir = "User_Data/Default" if interactive else "User_Data/{}".format(args.username)
     epicgames_claimer.log("Claimer is starting...")
-    claimer = epicgames_claimer(data_dir, headless=not args.no_headless, chromium_path=args.chromium_path)
+    claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path)
     if args.once == True:
         epicgames_claimer.log("Claimer started.")
-        claimer.run_once(interactive, args.username, args.password, args.verification_code)
+        claimer.run_once(args.interactive, args.username, args.password, args.verification_code)
         epicgames_claimer.log("Claim completed.")
     else:
         epicgames_claimer.log("Claimer started.")
-        claimer.run_once(interactive, args.username, args.password, args.verification_code)
-        claimer.scheduled_run(args.run_at, interactive, args.username, args.password, args.verification_code)
+        claimer.run_once(args.interactive, args.username, args.password, args.verification_code)
+        claimer.scheduled_run(args.run_at, args.interactive, args.username, args.password, args.verification_code)
 
 
 if __name__ == "__main__":
