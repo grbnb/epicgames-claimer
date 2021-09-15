@@ -392,13 +392,16 @@ class epicgames_claimer:
         if "SIGHUP" in dir(signal):
             signal.signal(signal.SIGHUP, self._quit)
 
-    async def _is_owned_async(self, offer_id: str, namespace: str):
+    async def _is_owned_async(self, offer_id: str, namespace: str) -> bool:
         args = {
             "query": "query launcherQuery($namespace: String!, $offerId: String!){Launcher{entitledOfferItems(namespace: $namespace, offerId: $offerId){entitledToAnyItemInOffer}}}",
             "variables": "{{\"namespace\": \"{}\", \"offerId\": \"{}\"}}".format(namespace, offer_id)
         }
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
-        owned = response["data"]["Launcher"]["entitledOfferItems"]["entitledToAnyItemInOffer"]
+        try:
+            owned = response["data"]["Launcher"]["entitledOfferItems"]["entitledToAnyItemInOffer"]
+        except:
+            raise ValueError("The returned data seems to be incorrect.")
         return owned
 
     async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
