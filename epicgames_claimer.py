@@ -8,11 +8,11 @@ from getpass import getpass
 from json.decoder import JSONDecodeError
 from typing import Dict, List, Optional, Union
 
+import requests
 import schedule
 from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
-
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
     launcher.DEFAULT_ARGS.remove("--enable-automation")
@@ -20,9 +20,18 @@ if "--enable-automation" in launcher.DEFAULT_ARGS:
 if "SIGCHLD" in dir(signal):
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
+def log(text: str, level: str = "info") -> None:
+    localtime = time.asctime(time.localtime(time.time()))
+    if level == "info":
+        print("[{}] {}".format(localtime, text))
+    elif level == "warning":
+        print("\033[33m[{}] Warning: {}\033[0m".format(localtime, text))
+    elif level == "error":
+        print("\033[31m[{}] Error: {}\033[0m".format(localtime, text))
+
 
 class epicgames_claimer:
-    def __init__(self, data_dir: Optional[str] = None, headless: bool = True, sandbox: bool = False, chromium_path: Optional[str] = None) -> None:
+    def __init__(self, data_dir: Optional[str] = None, headless: bool = True, sandbox: bool = False, chromium_path: Optional[str] = None, serverchan_sendkey: str = None) -> None:
         self.data_dir = data_dir
         self.headless = headless
         self.sandbox = sandbox
@@ -30,10 +39,10 @@ class epicgames_claimer:
         self._loop = asyncio.get_event_loop()
         self.browser_opened = False
         self.page = None
+        self.serverchan_sendkey = serverchan_sendkey
         self.open_browser()
     
-    @staticmethod
-    def log(text: str, level: str = "info") -> None:
+    def log(self, text: str, level: str = "info") -> None:
         localtime = time.asctime(time.localtime(time.time()))
         if level == "info":
             print("[{}] {}".format(localtime, text))
@@ -41,6 +50,18 @@ class epicgames_claimer:
             print("\033[33m[{}] Warning: {}\033[0m".format(localtime, text))
         elif level == "error":
             print("\033[31m[{}] Error: {}\033[0m".format(localtime, text))
+            self.serverchan_push("EpicGames Claimer Error！", text)
+
+    def serverchan_push(self, title: str, content: str = None) -> None:
+        if self.serverchan_sendkey != None:
+            try:
+                url = "https://sctapi.ftqq.com/{}.send".format(self.serverchan_sendkey)
+                data = {"title": title}
+                if content != None:
+                    data["desp"] = content
+                requests.post(url, data=data)
+            except Exception as e:
+                log("Failed to push to ServerChan. {}".format(e), "error")
 
     async def _headless_stealth_async(self):
         await self.page.evaluateOnNewDocument(
@@ -384,7 +405,7 @@ class epicgames_claimer:
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
     
-    def _add_quit_signal(self):
+    def add_quit_signal(self):
         signal.signal(signal.SIGINT, self._quit)
         signal.signal(signal.SIGTERM, self._quit)
         if "SIGBREAK" in dir(signal):
@@ -425,8 +446,11 @@ class epicgames_claimer:
                 if i == retries - 1:
                     self.log("Login failed.", "error")
                     await self._screenshot_async("screenshot.png")
+                    if interactive:
+                        await self._close_browser_async()
+                        exit(1)
                     await self._close_browser_async()
-                    exit(1)
+                    return
         for i in range(retries):
             try:
                 claimed_game_titles = await self._claim_async()
@@ -440,6 +464,8 @@ class epicgames_claimer:
                 if i == retries - 1:
                     self.log("Claim failed.", level="error")
                     await self._screenshot_async("screenshot.png")
+                    await self._close_browser_async()
+                    return
         await self._close_browser_async()
     
     def open_browser(self) -> None:
@@ -464,7 +490,7 @@ class epicgames_claimer:
         return self._loop.run_until_complete(self._run_once_async(interactive, email, password, verification_code, retries))
     
     def scheduled_run(self, at: str, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
-        self._add_quit_signal()
+        self.add_quit_signal()
         schedule.every().day.at(at).do(self.run_once, interactive, email, password, verification_code, retries)
         while True:
             schedule.run_pending()
@@ -482,6 +508,7 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-u", "--username", type=str, help="set username/email")
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
+    parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     args = parser.parse_args()
     if args.run_at == None:
         localtime = time.localtime()
@@ -493,6 +520,7 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     env_email = os.environ.get("EMAIL")
     env_password = os.environ.get("PASSWORD")
     env_verification_code = os.environ.get("VERIFICATION_CODE")
+    env_push_serverchan_sendkey = os.environ.get("PUSH_SERVERCHAN_SENDKEY")
     if env_run_at != None:
         args.run_at = env_run_at
     if env_once == "true":
@@ -510,26 +538,27 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
         args.password = env_password
     if env_verification_code != None:
         args.verification_code = env_verification_code
+    if env_push_serverchan_sendkey != None:
+        args.push_serverchan_sendkey = env_push_serverchan_sendkey
     if args.username != None and args.password == None:
         raise ValueError("Must input both username and password.")
     if args.username == None and args.password != None:
         raise ValueError("Must input both username and password.")
     args.interactive = True if args.username == None else False
     args.data_dir = "User_Data/Default" if args.interactive else "User_Data/{}".format(args.username)
-    args.once = True
     return args
 
 
 def main() -> None:
     args = get_args()
-    epicgames_claimer.log("Claimer is starting...")
-    claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path)
+    log("Claimer is starting...")
+    claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, serverchan_sendkey=args.push_serverchan_sendkey)
     if args.once == True:
-        epicgames_claimer.log("Claimer started.")
+        log("Claimer started.")
         claimer.run_once(args.interactive, args.username, args.password, args.verification_code)
-        epicgames_claimer.log("Claim completed.")
+        log("Claim completed.")
     else:
-        epicgames_claimer.log("Claimer started.")
+        log("Claimer started.")
         claimer.run_once(args.interactive, args.username, args.password, args.verification_code)
         claimer.scheduled_run(args.run_at, args.interactive, args.username, args.password, args.verification_code)
 
