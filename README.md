@@ -35,7 +35,7 @@
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
-| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      | 仅在运行出错时推送通知     |
+| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
 
 ### Docker
 
@@ -120,7 +120,7 @@ docker run -it luminoleon/epicgames-claimer
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
-| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      | 仅在运行出错时推送通知     |
+| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
 <!-- | `-a`, `--auto-update`              | 启用自动更新             |                           | -->
 
 ## 已知问题
