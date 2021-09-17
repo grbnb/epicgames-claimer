@@ -252,7 +252,9 @@ class epicgames_claimer:
             await self._click_async("#rememberMe")
         await self._click_async("#sign-in[tabindex='0']", timeout=120000)
         login_result = await self._find_async(["#talon_frame_login_prod[style*=visible]", "div.MuiPaper-root[role=alert] h6[class*=subtitle1]", "input[name=code-input-0]", "#user"], timeout=90000)
-        if login_result == 0:
+        if login_result == -1:
+            raise TimeoutError("Chcek login result timeout.")
+        elif login_result == 0:
             raise PermissionError("CAPTCHA is required for unknown reasons.")
         elif login_result == 1:
             alert_text = await self._get_text_async("div.MuiPaper-root[role=alert] h6[class*=subtitle1]")
@@ -263,7 +265,12 @@ class epicgames_claimer:
             else:
                 await self._type_async("input[name=code-input-0]", verifacation_code)
             await self._click_async("#continue[tabindex='0']", timeout=120000)
-            await self.page.waitForSelector("#user")
+            verify_result = await self._find_async(["#modal-content div[role*=alert]", "#user"])
+            if verify_result == -1:
+                raise TimeoutError("Chcek login result timeout.")
+            elif verify_result == 0:
+                alert_text = await self._get_text_async("#modal-content div[role*=alert]")
+                raise PermissionError("From Epic Games: {}".format(alert_text))
 
     async def _need_login_async(self, use_api: bool = False) -> bool:
         if use_api:
