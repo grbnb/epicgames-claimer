@@ -50,9 +50,12 @@ class epicgames_claimer:
             print("\033[33m[{}] Warning: {}\033[0m".format(localtime, text))
         elif level == "error":
             print("\033[31m[{}] Error: {}\033[0m".format(localtime, text))
-            self.serverchan_push("EpicGames Claimer Error！", text)
+            self.notify("EpicGames Claimer: Error！", text)
 
-    def serverchan_push(self, title: str, content: str = None) -> None:
+    def notify(self, title: str, content: str = None) -> None:
+        self._push_serverchan(title, content)
+
+    def _push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
             try:
                 url = "https://sctapi.ftqq.com/{}.send".format(self.serverchan_sendkey)
@@ -462,7 +465,9 @@ class epicgames_claimer:
             try:
                 claimed_game_titles = await self._claim_async()
                 if len(claimed_game_titles) > 0:
-                    self.log("{} has been claimed.".format(str(claimed_game_titles).strip("[]").replace("'", "")))
+                    text = "{} has been claimed.".format(str(claimed_game_titles).strip("[]").replace("'", ""))
+                    self.log(text)
+                    self.notify("EpicGames Claimer: Claim Successed", text)
                 else:
                     self.log("All available weekly free games are already in your library.")
                 break
