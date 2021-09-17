@@ -272,7 +272,7 @@ class epicgames_claimer:
                 alert_text = await self._get_text_async("#modal-content div[role*=alert]")
                 raise PermissionError("From Epic Games: {}".format(alert_text))
 
-    async def _need_login_async(self, use_api: bool = False) -> bool:
+    async def _need_login_async(self, use_api: bool = True) -> bool:
         if use_api:
             page_content_json = await self._get_json_async("https://www.epicgames.com/account/v2/ajaxCheckLogin")
             return page_content_json["needLogin"]
