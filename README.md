@@ -54,7 +54,7 @@ docker run -it luminoleon/epicgames-claimer
 1. 克隆/[下载](https://github.com/luminoleon/epicgames-claimer/releases)
 
     ``` bash
-    git clone -b master https://github.com/luminoleon/epicgames-claimer.git
+    git clone -b main https://github.com/luminoleon/epicgames-claimer.git
     cd epicgames-claimer
     ```
 
