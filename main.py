@@ -30,9 +30,10 @@ def run() -> None:
         update()
     for i in range(3):
         try:
-            claimer = epicgames_claimer.epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, serverchan_sendkey=args.push_serverchan_sendkey)
+            claimer_notifications = epicgames_claimer.notifications(serverchan_sendkey=args.push_serverchan_sendkey)
+            claimer = epicgames_claimer.epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
             claimer.add_quit_signal()
-            claimer.run_once(args.interactive, args.username, args.password)
+            claimer.run_once(args.interactive, args.email, args.password)
             break
         except BrowserError as e:
             epicgames_claimer.log(str(e).replace("\n", " "), "warning")
@@ -50,14 +51,15 @@ def main() -> None:
     epicgames_claimer.log("Claimer is starting...")
     if args.auto_update and not is_up_to_date():
         update()
-    claimer = epicgames_claimer.epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, serverchan_sendkey=args.push_serverchan_sendkey)
+    claimer_notifications = epicgames_claimer.notifications(serverchan_sendkey=args.push_serverchan_sendkey)
+    claimer = epicgames_claimer.epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
     if args.once == True:
         epicgames_claimer.log("Claimer started.")
-        claimer.run_once(args.interactive, args.username, args.password)
+        claimer.run_once(args.interactive, args.email, args.password)
         epicgames_claimer.log("Claim completed.")
     else:
         epicgames_claimer.log("Claimer started.".format(args.run_at))
-        claimer.run_once(args.interactive, args.username, args.password)
+        claimer.run_once(args.interactive, args.email, args.password)
         claimer.add_quit_signal()
         scheduled_run(args.run_at)
 
