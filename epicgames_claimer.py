@@ -118,7 +118,11 @@ class epicgames_claimer:
             if self.headless:
                 await self._headless_stealth_async()
             self.browser_opened = True
+        await self._refresh_cookies_async()
 
+    async def _refresh_cookies_async(self) -> None:
+        await self._navigate_async("https://www.epicgames.com/store/en-US/")
+    
     async def _intercept_request_async(self, request: Request) -> None:
         if request.resourceType in ["image", "media", "font"]:
             await request.abort()
@@ -282,7 +286,7 @@ class epicgames_claimer:
                 alert_text = await self._get_text_async("#modal-content div[role*=alert]")
                 raise PermissionError("From Epic Games: {}".format(alert_text))
 
-    async def _need_login_async(self, use_api: bool = False) -> bool:
+    async def _need_login_async(self, use_api: bool = True) -> bool:
         if use_api:
             page_content_json = await self._get_json_async("https://www.epicgames.com/account/v2/ajaxCheckLogin")
             return page_content_json["needLogin"]
