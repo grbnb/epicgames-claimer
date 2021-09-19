@@ -15,6 +15,9 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
+__version__ = "1.5.1"
+
+
 if "--enable-automation" in launcher.DEFAULT_ARGS:
     launcher.DEFAULT_ARGS.remove("--enable-automation")
 # Solve the issue of zombie processes
@@ -447,7 +450,16 @@ class epicgames_claimer:
         return owned
 
     async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
-        await self._open_browser_async()
+        if not self.browser_opened:
+            for i in range(retries):
+                try:
+                    await self._open_browser_async()
+                    break
+                except Exception as e:
+                    epicgames_claimer.log(str(e).replace("\n", " "), "warning")
+                    if i == retries - 1:
+                        epicgames_claimer.log("Failed to open the browser.", "error")
+                        return
         for i in range(retries):
             try:
                 if await self._need_login_async():
@@ -559,15 +571,11 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
 
 def main() -> None:
     args = get_args()
-    log("Claimer is starting...")
     claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
-    if args.once == True:
-        log("Claimer started.")
+    if args.once:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
-        log("Claim completed.")
     else:
-        log("Claimer started.")
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
 
