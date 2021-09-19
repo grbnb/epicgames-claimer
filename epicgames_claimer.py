@@ -465,6 +465,7 @@ class epicgames_claimer:
                 if await self._need_login_async():
                     if interactive:
                         self.log("Need login.")
+                        self.notifications.notify("EpicGames Claimer: Need Login", "登录失效，需要重新登录。")
                         await self._close_browser_async()
                         email = input("Email: ")
                         password = getpass("Password: ")
