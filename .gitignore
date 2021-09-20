@@ -6,3 +6,4 @@ dist
 *.spec
 chromium
 screenshot*
+*.bak

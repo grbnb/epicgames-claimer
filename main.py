@@ -2,6 +2,7 @@ import argparse
 import importlib
 import json
 import os
+import shutil
 import sys
 import time
 from typing import List, Tuple
@@ -9,7 +10,11 @@ from typing import List, Tuple
 import requests
 import schedule
 
-import epicgames_claimer
+try:
+    import epicgames_claimer
+except:
+    shutil.copy("epicgames_claimer.py.bak", "epicgames_claimer.py")
+    import epicgames_claimer
 
 args = epicgames_claimer.get_args(include_auto_update=True)
 
@@ -39,17 +44,32 @@ def has_newer_version() -> Tuple[bool, str]:
             return True, latest_sha
     return False, latest_sha
 
+def reload_module() -> None:
+    successed = False
+    try:
+        importlib.reload(epicgames_claimer)
+        successed = True
+    except:
+        shutil.copy("epicgames_claimer.py.bak", "epicgames_claimer.py")
+        importlib.reload(epicgames_claimer)
+    if not successed:
+        raise ValueError("Failed to reload epicgames_claimer.py.")
+
+def update_reload_module() -> None:
+    shutil.copy("epicgames_claimer.py", "epicgames_claimer.py.bak")
+    response = requests.get("https://luminoleon.github.io/epicgames-claimer/epicgames_claimer.py")
+    with open("epicgames_claimer.py","wb") as f:
+        f.write(response.content)
+    reload_module()
+
 def update() -> None:
     try:
         need_update = has_newer_version()[0]
         if need_update:
-            response = requests.get("https://luminoleon.github.io/epicgames-claimer/epicgames_claimer.py")
-            with open("epicgames_claimer.py","wb") as f:
-                f.write(response.content)
-            importlib.reload(epicgames_claimer)
-            epicgames_claimer.log("\"epicgames_claimer.py\" has been updated.")
+            update_reload_module()
+            epicgames_claimer.log("epicgames_claimer.py has been updated.")
     except Exception as e:
-        epicgames_claimer.log("Update \"epicgames_claimer.py\" failed. {}: {}".format(e.__class__.__name__, e), level="warning")
+        epicgames_claimer.log("Update epicgames_claimer.py failed. {}: {}".format(e.__class__.__name__, e), level="warning")
 
 def get_args_string(namespace: argparse.Namespace, exclude: List[str] = ["interactive", "data_dir", "once", "auto_update"]) -> str:
     args_string = " "
