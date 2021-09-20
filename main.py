@@ -41,9 +41,9 @@ def has_newer_version() -> Tuple[bool, str]:
 
 def update() -> None:
     try:
-        need_update, sha = has_newer_version()
+        need_update = has_newer_version()[0]
         if need_update:
-            response = requests.get("https://raw.githubusercontent.com/luminoleon/epicgames-claimer/{}/epicgames_claimer.py".format(sha))
+            response = requests.get("https://luminoleon.github.io/epicgames-claimer/epicgames_claimer.py")
             with open("epicgames_claimer.py","wb") as f:
                 f.write(response.content)
             importlib.reload(epicgames_claimer)
