@@ -76,7 +76,6 @@ docker run -it luminoleon/epicgames-claimer
     python3 main.py
     ```
 
-    <!--
     <details>
     <summary>启用自动更新</summary>
 
@@ -85,7 +84,6 @@ docker run -it luminoleon/epicgames-claimer
     ```
 
     </details>
-    -->
 
     <details>
     <summary>不使用交互输入</summary>
@@ -117,11 +115,11 @@ docker run -it luminoleon/epicgames-claimer
 | `-c`, `--chromium-path`            | 指定浏览器可执行文件路径  |                           |
 | `-r`, `--run-at`                   | 指定每日运行时间         | 格式：HH:MM，默认为当前时间 |
 | `-o`, `--once`                     | 运行一次领取过程后退出    |                           |
+| `-a`, `--auto-update`              | 启用自动更新             |                           |
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
 | `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
-<!-- | `-a`, `--auto-update`              | 启用自动更新             |                           | -->
 
 ## 已知问题
 
