@@ -570,8 +570,9 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    args = get_args()
+def main(args: argparse.Namespace = None) -> None:
+    if args == None:    
+        args = get_args()
     claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
     if args.once:
@@ -579,6 +580,15 @@ def main() -> None:
     else:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
+
+
+# This is for Tencent Serverless
+def main_handler(event, context) -> None:
+    args = get_args()
+    args.once = True
+    args.data_dir = "/tmp/" + args.data_dir
+    args.chromium_path = "chrome-linux/chrome"
+    main(args)
 
 
 if __name__ == "__main__":
