@@ -89,7 +89,10 @@ def get_args_string(namespace: argparse.Namespace, exclude: List[str] = ["intera
 def run() -> None:
     if args.auto_update:
         update()
-    os.system(sys.executable + " epicgames_claimer.py -o" + get_args_string(args))
+    try:
+        os.system(sys.executable + " epicgames_claimer.py -o " + get_args_string(args))
+    except Exception as e:
+        epicgames_claimer.log("Failed to run epicgames_claimer.py. {}".format(e), "error")
 
 def scheduled_run(at: str):
     schedule.every().day.at(at).do(run)
