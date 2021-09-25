@@ -22,7 +22,7 @@
 
 [下载](https://github.com/luminoleon/epicgames-claimer/releases)
 
-<!-- 注意：Windows版本目前不支持自动更新。 -->
+Windows版本目前不支持自动更新。
 
 #### Windows版本可选参数
 
@@ -120,6 +120,40 @@ docker run -it luminoleon/epicgames-claimer
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
 | `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
+
+## 部署
+
+**注意：由于Epic游戏商城限制了单个IP地址领取免费游戏的总量，所以使用公共IP领取游戏可能会失败。**
+
+### 腾讯云函数
+
+需要关闭双重验证。
+
+目前不支持自动更新。
+
+需要上传的文件：epicgames_claimer.py，requirements.txt
+
+执行方法：epicgames_claimer.main_handler
+
+推荐配置：内存1024MB，执行超时时间900秒
+
+#### 环境变量
+
+| 变量                    | 说明                  |
+| ----------------------- | -------------------- |
+| EMAIL                   | 设置用户名/邮箱       |
+| PASSWORD                | 设置密码              |
+| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey  |
+
+#### 如何安装python模块和浏览器
+
+使用在线编辑器中的集成终端打开src目录，运行以下命令。
+
+```bash
+pip3 install -r requirements.txt -t .
+pyppeteer-install
+cp -r /root/.local/share/pyppeteer/local-chromium/*/chrome-linux .
+```
 
 ## 已知问题
 
