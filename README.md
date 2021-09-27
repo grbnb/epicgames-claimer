@@ -156,6 +156,8 @@ mv bin/pyppeteer-install .
 cp -r /root/.local/share/pyppeteer/local-chromium/*/chrome-linux .
 ```
 
+运行完成后点击“部署”按钮使修改生效。
+
 ## 已知问题
 
 Windows系统中途结束脚本可能导致浏览器进程留在后台。请检查任务管理器并手动结束浏览器进程。
