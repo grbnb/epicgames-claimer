@@ -15,7 +15,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.5.3"
+__version__ = "1.5.4"
 
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
