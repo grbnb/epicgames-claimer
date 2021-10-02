@@ -6,7 +6,7 @@ import signal
 import time
 from getpass import getpass
 from json.decoder import JSONDecodeError
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import requests
 import schedule
@@ -15,7 +15,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.5.3"
+__version__ = "1.5.4"
 
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
@@ -299,7 +299,20 @@ class epicgames_claimer:
                 return False
             else:
                 return True
-       
+    
+    async def _purchase_async(self, purchase_url: str) -> Tuple[int, str]:
+        await self._navigate_async(purchase_url, timeout=60000)
+        await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=60000)
+        await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
+        result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=120000)
+        if result == 0:
+            message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
+            return (result, message)
+        elif result == 1:
+            return (result, "")
+        elif result == -1:
+            return (result, "Timeout.")
+
     async def _claim_async(self) -> List[str]:
         free_games = await self._get_weekly_free_games_async()
         claimed_game_titles = []
@@ -307,17 +320,23 @@ class epicgames_claimer:
         check_claim_result_failed = []
         for game in free_games:
             if not await self._is_owned_async(game["offer_id"], game["namespace"]):
-                await self._navigate_async(game["purchase_url"], timeout=60000)
-                await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=60000)
-                await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
-                claim_result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=120000)
-                if claim_result == 0:
-                    alert_text = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
-                    alert_text_list.append(alert_text)
-                elif claim_result == 1:
+                result, message = await self._purchase_async(game["purchase_url"])
+                if result == 0:
+                    alert_text_list.append(message)
+                elif result == 1:
                     claimed_game_titles.append(game["title"])
-                elif claim_result == -1:
+                elif result == -1:
                     check_claim_result_failed.append(game["title"])
+            free_dlcs = await self._get_free_dlcs_async(game["namespace"])
+            for dlc in free_dlcs:
+                if not await self._is_owned_async(dlc["offer_id"], dlc["namespace"]):
+                    result, message = await self._purchase_async(dlc["purchase_url"])
+                    if result == 0:
+                        alert_text_list.append(message)
+                    elif result == 1:
+                        claimed_game_titles.append(dlc["title"])
+                    elif result == -1:
+                        check_claim_result_failed.append(dlc["title"])
         if len(alert_text_list) > 0:
             raise PermissionError("From Epic Games: {}".format(str(alert_text_list).strip("[]").replace("'", "").replace(",", "")))
         elif len(check_claim_result_failed) > 0:
@@ -425,6 +444,22 @@ class epicgames_claimer:
                     free_game_info["purchase_url"] = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(free_game_info["namespace"], free_game_info["offer_id"])
                     free_game_infos.append(free_game_info)
         return free_game_infos
+    
+    async def _get_free_dlcs_async(self, namespace: str) -> List[Dict[str, str]]:
+        args = {
+            "query": "query searchStoreQuery($namespace: String, $category: String, $freeGame: Boolean, $count: Int){Catalog{searchStore(namespace: $namespace, category: $category, freeGame: $freeGame, count: $count){elements{title id namespace}}}}",
+            "variables": '{{"namespace": "{}", "category": "digitalextras/book|addons|digitalextras/soundtrack|digitalextras/video", "freeGame": true, "count": 1000}}'.format(namespace)
+        }
+        response = await self._get_json_async("https://www.epicgames.com/graphql", args)
+        free_items = []
+        for item in response["data"]["Catalog"]["searchStore"]["elements"]:
+            free_item = {}
+            free_item["title"] = item["title"]
+            free_item["offer_id"] = item["id"]
+            free_item["namespace"] = item["namespace"]
+            free_item["purchase_url"] = self._get_purchase_url(item["namespace"], item["id"])
+            free_items.append(free_item)
+        return free_items
     
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
