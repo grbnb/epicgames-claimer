@@ -319,16 +319,24 @@ class epicgames_claimer:
         alert_text_list = []
         check_claim_result_failed = []
         for game in free_games:
-            free_items = await self._get_free_game_and_dlcs_async(game["namespace"])
-            for item in free_items:
-                if not await self._is_owned_async(item["offer_id"], item["namespace"]):
-                    result, message = await self._purchase_async(item["purchase_url"])
+            if not await self._is_owned_async(game["offer_id"], game["namespace"]):
+                result, message = await self._purchase_async(game["purchase_url"])
+                if result == 0:
+                    alert_text_list.append(message)
+                elif result == 1:
+                    claimed_game_titles.append(game["title"])
+                elif result == -1:
+                    check_claim_result_failed.append(game["title"])
+            free_dlcs = await self._get_free_dlcs_async(game["namespace"])
+            for dlc in free_dlcs:
+                if not await self._is_owned_async(dlc["offer_id"], dlc["namespace"]):
+                    result, message = await self._purchase_async(dlc["purchase_url"])
                     if result == 0:
                         alert_text_list.append(message)
                     elif result == 1:
-                        claimed_game_titles.append(item["title"])
+                        claimed_game_titles.append(dlc["title"])
                     elif result == -1:
-                        check_claim_result_failed.append(item["title"])
+                        check_claim_result_failed.append(dlc["title"])
         if len(alert_text_list) > 0:
             raise PermissionError("From Epic Games: {}".format(str(alert_text_list).strip("[]").replace("'", "").replace(",", "")))
         elif len(check_claim_result_failed) > 0:
@@ -437,10 +445,10 @@ class epicgames_claimer:
                     free_game_infos.append(free_game_info)
         return free_game_infos
     
-    async def _get_free_game_and_dlcs_async(self, namespace: str) -> List[Dict[str, str]]:
+    async def _get_free_dlcs_async(self, namespace: str) -> List[Dict[str, str]]:
         args = {
-            "query": "query searchStoreQuery($namespace: String, $freeGame: Boolean = true){Catalog{searchStore(namespace: $namespace freeGame: $freeGame){elements{title id namespace}}}}",
-            "variables": '{{"namespace": "{}", "total": "2500"}}'.format(namespace)
+            "query": "query searchStoreQuery($namespace: String, $category: String, $freeGame: Boolean, $count: Int){Catalog{searchStore(namespace: $namespace, category: $category, freeGame: $freeGame, count: $count){elements{title id namespace}}}}",
+            "variables": '{{"namespace": "{}", "category": "digitalextras/book|addons|digitalextras/soundtrack|digitalextras/video", "freeGame": true, "count": 1000}}'.format(namespace)
         }
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
         free_items = []
