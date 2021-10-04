@@ -104,7 +104,8 @@ class epicgames_claimer:
             browser_args = [
                 "--disable-infobars",
                 "--blink-settings=imagesEnabled=false",
-                "--no-first-run"
+                "--no-first-run",
+                "--disable-gpu"
             ]
             if not self.sandbox:
                 browser_args.append("--no-sandbox")
