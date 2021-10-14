@@ -36,8 +36,10 @@ def log(text: str, level: str = "info") -> None:
 
 
 class notifications:
-    def __init__(self, serverchan_sendkey: str = None) -> None:
+    def __init__(self, serverchan_sendkey: str = None, bark_push_url: str = "https://api.day.app/push", bark_device_key: str = None) -> None:
         self.serverchan_sendkey = serverchan_sendkey
+        self.bark_push_url = bark_push_url
+        self.bark_device_key = bark_device_key
         
     def push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
@@ -50,8 +52,28 @@ class notifications:
             except Exception as e:
                 log("Failed to push to ServerChan. {}".format(e), "error")
 
+    def push_bark(self, title: str, content: str = None) -> None:
+        if self.bark_device_key:
+            try:
+                response = requests.post(
+                    url=self.bark_push_url,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8",
+                    },
+                    data=json.dumps({
+                        "body": content,
+                        "device_key": self.bark_device_key,
+                        "title": title
+                    })
+                )
+                log(f"Bark Response HTTP Status Code: {response.status_code}")
+                log(f"Bark Response HTTP Response Body: {response.content}")
+            except Exception as e:
+                log("Failed to push to Bark. {}".format(e), "error")
+
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
+        self.push_bark(title, content)
 
 
 class epicgames_claimer:
@@ -592,6 +614,8 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
+    parser.add_argument("-pbu", "--push-bark-url", type=str, help="set Bark server address")
+    parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -609,7 +633,7 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
 def main(args: argparse.Namespace = None) -> None:
     if args == None:    
         args = get_args()
-    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey)
+    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
     if args.once:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
