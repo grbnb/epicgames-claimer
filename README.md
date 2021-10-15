@@ -35,7 +35,9 @@ Windows版本目前不支持自动更新。
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
-| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
+| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |                      |
+| `-pbu`,`--push-bark-url` | 设置Bark服务端地址 | 默认: https://api.day.app/push |
+| `-pbk`,`--push-bark-device-key` | 设置Bark的DeviceKey |  |
 
 ### Docker
 
@@ -106,6 +108,15 @@ docker run -it luminoleon/epicgames-claimer
     ```
 
     </details>
+    
+    <details>
+    <summary>添加Bark通知推送</summary>
+
+    ```bash
+    python3 main.py -pbu <BarkPushUrl> -pbk <BarkDeviceKey>
+    ```
+	非自建服务端无需-pbu参数，默认采用官方推送地址https://api.day.app/push
+    </details>
 
 #### Python版本可选参数
 
@@ -120,6 +131,8 @@ docker run -it luminoleon/epicgames-claimer
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
 | `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
+| `-pbu`,`--push-bark-url` | 设置Bark服务端地址 | 默认: https://api.day.app/push |
+| `-pbk`,`--push-bark-device-key` | 设置Bark的DeviceKey |  |
 
 ## 部署
 
@@ -144,6 +157,8 @@ docker run -it luminoleon/epicgames-claimer
 | EMAIL                   | 设置用户名/邮箱       |
 | PASSWORD                | 设置密码              |
 | PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey  |
+| PUSH_BARK_URL | 设置Bark服务端地址 |
+| PUSH_BARK_DEVICE_KEY | 设置Bark的DeviceKey |
 
 #### 如何安装python模块和浏览器
 
