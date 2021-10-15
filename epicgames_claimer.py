@@ -614,7 +614,7 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
-    parser.add_argument("-pbu", "--push-bark-url", type=str, help="set Bark server address")
+    parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
     args = parser.parse_args()
     args = update_args_from_env(args)
