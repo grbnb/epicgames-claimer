@@ -459,13 +459,14 @@ class epicgames_claimer:
             free_game_info = {}
             if {"path": "freegames"} in item["categories"]:
                 if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
-                    free_game_info["title"] = item["title"]
-                    free_game_info["url_slug"] = item["urlSlug"]
-                    free_game_info["namespace"] = item["namespace"]
-                    free_game_info["offer_id"] = item["id"]
-                    free_game_info["url"] = "https://www.epicgames.com/store/p/" + free_game_info["url_slug"]
-                    free_game_info["purchase_url"] = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(free_game_info["namespace"], free_game_info["offer_id"])
-                    free_game_infos.append(free_game_info)
+                    if item["offerType"] == "BASE_GAME":
+                        free_game_info["title"] = item["title"]
+                        free_game_info["url_slug"] = item["urlSlug"]
+                        free_game_info["namespace"] = item["namespace"]
+                        free_game_info["offer_id"] = item["id"]
+                        free_game_info["url"] = "https://www.epicgames.com/store/p/" + free_game_info["url_slug"]
+                        free_game_info["purchase_url"] = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(free_game_info["namespace"], free_game_info["offer_id"])
+                        free_game_infos.append(free_game_info)
         return free_game_infos
     
     async def _get_free_dlcs_async(self, namespace: str) -> List[Dict[str, str]]:
@@ -507,17 +508,19 @@ class epicgames_claimer:
             raise ValueError("The returned data seems to be incorrect.")
         return owned
 
-    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
-        if not self.browser_opened:
-            for i in range(retries):
-                try:
+    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5, raise_error: bool = False) -> None:
+        for i in range(retries):
+            try:
+                if not self.browser_opened:
                     await self._open_browser_async()
-                    break
-                except Exception as e:
-                    epicgames_claimer.log(str(e).replace("\n", " "), "warning")
-                    if i == retries - 1:
-                        epicgames_claimer.log("Failed to open the browser.", "error")
-                        return
+                break
+            except Exception as e:
+                epicgames_claimer.log(str(e).replace("\n", " "), "warning")
+                if i == retries - 1:
+                    epicgames_claimer.log("Failed to open the browser.", "error")
+                    if raise_error:
+                        raise e
+                    return
         for i in range(retries):
             try:
                 if await self._need_login_async():
@@ -542,14 +545,17 @@ class epicgames_claimer:
                         await self._close_browser_async()
                         exit(1)
                     await self._close_browser_async()
+                    if raise_error:
+                        raise e
                     return
         for i in range(retries):
             try:
                 claimed_game_titles = await self._claim_async()
                 if len(claimed_game_titles) > 0:
                     text = "{} has been claimed.".format(str(claimed_game_titles).strip("[]").replace("'", ""))
+                    text_zh = "{} 已被成功领取。".format(str(claimed_game_titles).strip("[]").replace("'", ""))
                     self.log(text)
-                    self.notifications.notify("EpicGames Claimer: Claim Successed", text)
+                    self.notifications.notify("EpicGames Claimer: Claim Successed", text_zh)
                 else:
                     self.log("All available weekly free games are already in your library.")
                 break
@@ -559,6 +565,8 @@ class epicgames_claimer:
                     self.log("Claim failed.", level="error")
                     await self._screenshot_async("screenshot.png")
                     await self._close_browser_async()
+                    if raise_error:
+                        raise e
                     return
         await self._close_browser_async()
     
