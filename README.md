@@ -152,13 +152,13 @@ docker run -it luminoleon/epicgames-claimer
 
 #### 环境变量
 
-| 变量                    | 说明                  |
-| ----------------------- | -------------------- |
-| EMAIL                   | 设置用户名/邮箱       |
-| PASSWORD                | 设置密码              |
-| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey  |
-| PUSH_BARK_URL | 设置Bark服务端地址 |
-| PUSH_BARK_DEVICE_KEY | 设置Bark的DeviceKey |
+| 变量                    | 说明                 | 备注                           |
+| ----------------------- | ------------------- | ------------------------------ |
+| EMAIL                   | 设置用户名/邮箱      |                                |
+| PASSWORD                | 设置密码            |                                |
+| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey |                                |
+| PUSH_BARK_URL           | 设置Bark服务端地址   | 默认: https://api.day.app/push |
+| PUSH_BARK_DEVICE_KEY    | 设置Bark的DeviceKey |                                |
 
 #### 如何安装python模块和浏览器
 

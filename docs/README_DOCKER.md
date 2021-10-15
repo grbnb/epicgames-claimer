@@ -75,16 +75,18 @@ docker run -it luminoleon/epicgames-claimer
 
 ## 环境变量
 
-| 变量                    | 说明                  | 默认   | 备注                  |
-| ----------------------- | -------------------- | ------ | -------------------- |
+| 变量                    | 说明                  | 默认   | 备注                            |
+| ----------------------- | -------------------- | ------ | ------------------------------ |
 | TZ                      | 容器的时区, [可用时区列表](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) | Asia/Shanghai |  |
-| RUN_AT                  | 指定每日运行时间      | 当前时间 | 格式：HH:MM          |
-| ONCE                    | 运行一次领取过程后退出 | false   | true/false          |
-| AUTO_UPDATE             | 启用自动更新          | false   | true/false          |
-| EMAIL                   | 设置用户名/邮箱       |         |                     |
-| PASSWORD                | 设置密码              |         |                     |
-| VERIFICATION_CODE       | 设置双重验证代码      |         |                      |
-| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey  |         |                      |
+| RUN_AT                  | 指定每日运行时间      | 当前时间 | 格式：HH:MM                    |
+| ONCE                    | 运行一次领取过程后退出 | false   | true/false                     |
+| AUTO_UPDATE             | 启用自动更新          | false   | true/false                     |
+| EMAIL                   | 设置用户名/邮箱       |         |                                |
+| PASSWORD                | 设置密码              |         |                               |
+| VERIFICATION_CODE       | 设置双重验证代码      |         |                                |
+| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey  |         |                                |
+| PUSH_BARK_URL           | 设置Bark服务端地址    |         | 默认: https://api.day.app/push |
+| PUSH_BARK_DEVICE_KEY    | 设置Bark的DeviceKey  |         |                                |
 
 ## 可选参数
 
@@ -92,12 +94,14 @@ docker run -it luminoleon/epicgames-claimer
 
 使用方法: `docker run luminoleon/epicgames-claimer [-h] [-n] [-c CHROMIUM_PATH] [-r RUN_AT] [-o] [-a] [-u USERNAME] [-p PASSWORD] [-t VERIFICATION_CODE] [-ps PUSH_SERVERCHAN_SENDKEY]`
 
-| 参数                               | 说明                     | 备注                      |
-| ---------------------------------- | ----------------------- | ------------------------- |
-| `-r`, `--run-at`                   | 指定每日运行时间         | 格式：HH:MM，默认为当前时间 |
-| `-o`, `--once`                     | 运行一次领取过程后退出    |                           |
-| `-a`, `--auto-update`              | 启用自动更新             |                           |
-| `-u`, `--username`                 | 设置用户名/邮箱          |                           |
-| `-p`, `--password`                 | 设置密码                 |                           |
-| `-t`, `--verification-code`        | 设置双重验证代码          |                          |
-| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
+| 参数                               | 说明                  | 备注                           |
+| ---------------------------------- | -------------------- | ------------------------------ |
+| `-r`, `--run-at`                   | 指定每日运行时间      | 格式：HH:MM，默认为当前时间      |
+| `-o`, `--once`                     | 运行一次领取过程后退出 |                                |
+| `-a`, `--auto-update`              | 启用自动更新          |                                |
+| `-u`, `--username`                 | 设置用户名/邮箱       |                                |
+| `-p`, `--password`                 | 设置密码              |                                |
+| `-t`, `--verification-code`        | 设置双重验证代码       |                                |
+| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey   |                                |
+| `-pbu`,`--push-bark-url`           | 设置Bark服务端地址     | 默认: https://api.day.app/push |
+| `-pbk`,`--push-bark-device-key`    | 设置Bark的DeviceKey   |                                |
