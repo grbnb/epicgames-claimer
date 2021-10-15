@@ -1,0 +1,14 @@
+FROM python:3.9-alpine
+
+LABEL maintainer="Luminoleon <luminoleon@outlook.com>"
+
+ENV TZ=Asia/Shanghai
+
+COPY requirements.txt /
+
+RUN pip3 install --no-cache-dir -r requirements.txt \
+    && apk add --no-cache chromium
+
+COPY *.py /
+
+ENTRYPOINT [ "python3", "-u", "main.py", "-c", "chromium-browser" ]

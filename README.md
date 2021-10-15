@@ -22,7 +22,7 @@
 
 [下载](https://github.com/luminoleon/epicgames-claimer/releases)
 
-<!-- 注意：Windows版本目前不支持自动更新。 -->
+Windows版本目前不支持自动更新。
 
 #### Windows版本可选参数
 
@@ -35,7 +35,9 @@
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
-| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
+| `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |                      |
+| `-pbu`,`--push-bark-url` | 设置Bark服务端地址 | 默认: https://api.day.app/push |
+| `-pbk`,`--push-bark-device-key` | 设置Bark的DeviceKey |  |
 
 ### Docker
 
@@ -76,7 +78,6 @@ docker run -it luminoleon/epicgames-claimer
     python3 main.py
     ```
 
-    <!--
     <details>
     <summary>启用自动更新</summary>
 
@@ -85,7 +86,6 @@ docker run -it luminoleon/epicgames-claimer
     ```
 
     </details>
-    -->
 
     <details>
     <summary>不使用交互输入</summary>
@@ -108,6 +108,15 @@ docker run -it luminoleon/epicgames-claimer
     ```
 
     </details>
+    
+    <details>
+    <summary>添加Bark通知推送</summary>
+
+    ```bash
+    python3 main.py -pbu <BarkPushUrl> -pbk <BarkDeviceKey>
+    ```
+	非自建服务端无需-pbu参数，默认采用官方推送地址https://api.day.app/push
+    </details>
 
 #### Python版本可选参数
 
@@ -117,11 +126,52 @@ docker run -it luminoleon/epicgames-claimer
 | `-c`, `--chromium-path`            | 指定浏览器可执行文件路径  |                           |
 | `-r`, `--run-at`                   | 指定每日运行时间         | 格式：HH:MM，默认为当前时间 |
 | `-o`, `--once`                     | 运行一次领取过程后退出    |                           |
+| `-a`, `--auto-update`              | 启用自动更新             |                           |
 | `-u`, `--username`                 | 设置用户名/邮箱          |                           |
 | `-p`, `--password`                 | 设置密码                 |                           |
 | `-t`, `--verification-code`        | 设置双重验证代码          |                          |
 | `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |
-<!-- | `-a`, `--auto-update`              | 启用自动更新             |                           | -->
+| `-pbu`,`--push-bark-url` | 设置Bark服务端地址 | 默认: https://api.day.app/push |
+| `-pbk`,`--push-bark-device-key` | 设置Bark的DeviceKey |  |
+
+## 部署
+
+**注意：由于Epic游戏商城限制了单个IP地址领取免费游戏的总量，所以使用公共IP领取游戏可能会失败。**
+
+### 腾讯云函数
+
+需要关闭双重验证。
+
+目前不支持自动更新。
+
+需要上传的文件：epicgames_claimer.py，requirements.txt
+
+执行方法：epicgames_claimer.main_handler
+
+推荐配置：内存1024MB，执行超时时间900秒
+
+#### 环境变量
+
+| 变量                    | 说明                 | 备注                           |
+| ----------------------- | ------------------- | ------------------------------ |
+| EMAIL                   | 设置用户名/邮箱      |                                |
+| PASSWORD                | 设置密码            |                                |
+| PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey |                                |
+| PUSH_BARK_URL           | 设置Bark服务端地址   | 默认: https://api.day.app/push |
+| PUSH_BARK_DEVICE_KEY    | 设置Bark的DeviceKey |                                |
+
+#### 如何安装python模块和浏览器
+
+使用在线编辑器中的集成终端打开src目录，运行以下命令。
+
+```bash
+pip3 install -r requirements.txt -t .
+mv bin/pyppeteer-install .
+./pyppeteer-install
+cp -r /root/.local/share/pyppeteer/local-chromium/*/chrome-linux .
+```
+
+运行完成后点击“部署”按钮使修改生效。
 
 ## 已知问题
 

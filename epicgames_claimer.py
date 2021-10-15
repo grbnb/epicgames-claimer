@@ -6,13 +6,16 @@ import signal
 import time
 from getpass import getpass
 from json.decoder import JSONDecodeError
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import requests
 import schedule
 from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
+
+
+__version__ = "1.5.5"
 
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
@@ -33,8 +36,10 @@ def log(text: str, level: str = "info") -> None:
 
 
 class notifications:
-    def __init__(self, serverchan_sendkey: str = None) -> None:
+    def __init__(self, serverchan_sendkey: str = None, bark_push_url: str = "https://api.day.app/push", bark_device_key: str = None) -> None:
         self.serverchan_sendkey = serverchan_sendkey
+        self.bark_push_url = bark_push_url
+        self.bark_device_key = bark_device_key
         
     def push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
@@ -47,8 +52,28 @@ class notifications:
             except Exception as e:
                 log("Failed to push to ServerChan. {}".format(e), "error")
 
+    def push_bark(self, title: str, content: str = None) -> None:
+        if self.bark_device_key:
+            try:
+                response = requests.post(
+                    url=self.bark_push_url,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8",
+                    },
+                    data=json.dumps({
+                        "body": content,
+                        "device_key": self.bark_device_key,
+                        "title": title
+                    })
+                )
+                log(f"Bark Response HTTP Status Code: {response.status_code}")
+                log(f"Bark Response HTTP Response Body: {response.content}")
+            except Exception as e:
+                log("Failed to push to Bark. {}".format(e), "error")
+
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
+        self.push_bark(title, content)
 
 
 class epicgames_claimer:
@@ -101,7 +126,8 @@ class epicgames_claimer:
             browser_args = [
                 "--disable-infobars",
                 "--blink-settings=imagesEnabled=false",
-                "--no-first-run"
+                "--no-first-run",
+                "--disable-gpu"
             ]
             if not self.sandbox:
                 browser_args.append("--no-sandbox")
@@ -118,7 +144,11 @@ class epicgames_claimer:
             if self.headless:
                 await self._headless_stealth_async()
             self.browser_opened = True
+        # await self._refresh_cookies_async()
 
+    async def _refresh_cookies_async(self) -> None:
+        await self._navigate_async("https://www.epicgames.com/store/en-US/")
+    
     async def _intercept_request_async(self, request: Request) -> None:
         if request.resourceType in ["image", "media", "font"]:
             await request.abort()
@@ -292,7 +322,20 @@ class epicgames_claimer:
                 return False
             else:
                 return True
-       
+    
+    async def _purchase_async(self, purchase_url: str) -> Tuple[int, str]:
+        await self._navigate_async(purchase_url, timeout=60000)
+        await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=60000)
+        await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
+        result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=120000)
+        if result == 0:
+            message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
+            return (result, message)
+        elif result == 1:
+            return (result, "")
+        elif result == -1:
+            return (result, "Timeout.")
+
     async def _claim_async(self) -> List[str]:
         free_games = await self._get_weekly_free_games_async()
         claimed_game_titles = []
@@ -300,17 +343,23 @@ class epicgames_claimer:
         check_claim_result_failed = []
         for game in free_games:
             if not await self._is_owned_async(game["offer_id"], game["namespace"]):
-                await self._navigate_async(game["purchase_url"], timeout=60000)
-                await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=60000)
-                await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
-                claim_result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=120000)
-                if claim_result == 0:
-                    alert_text = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
-                    alert_text_list.append(alert_text)
-                elif claim_result == 1:
+                result, message = await self._purchase_async(game["purchase_url"])
+                if result == 0:
+                    alert_text_list.append(message)
+                elif result == 1:
                     claimed_game_titles.append(game["title"])
-                elif claim_result == -1:
+                elif result == -1:
                     check_claim_result_failed.append(game["title"])
+            free_dlcs = await self._get_free_dlcs_async(game["namespace"])
+            for dlc in free_dlcs:
+                if not await self._is_owned_async(dlc["offer_id"], dlc["namespace"]):
+                    result, message = await self._purchase_async(dlc["purchase_url"])
+                    if result == 0:
+                        alert_text_list.append(message)
+                    elif result == 1:
+                        claimed_game_titles.append(dlc["title"])
+                    elif result == -1:
+                        check_claim_result_failed.append(dlc["title"])
         if len(alert_text_list) > 0:
             raise PermissionError("From Epic Games: {}".format(str(alert_text_list).strip("[]").replace("'", "").replace(",", "")))
         elif len(check_claim_result_failed) > 0:
@@ -410,14 +459,31 @@ class epicgames_claimer:
             free_game_info = {}
             if {"path": "freegames"} in item["categories"]:
                 if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
-                    free_game_info["title"] = item["title"]
-                    free_game_info["url_slug"] = item["urlSlug"]
-                    free_game_info["namespace"] = item["namespace"]
-                    free_game_info["offer_id"] = item["id"]
-                    free_game_info["url"] = "https://www.epicgames.com/store/p/" + free_game_info["url_slug"]
-                    free_game_info["purchase_url"] = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(free_game_info["namespace"], free_game_info["offer_id"])
-                    free_game_infos.append(free_game_info)
+                    if item["offerType"] == "BASE_GAME":
+                        free_game_info["title"] = item["title"]
+                        free_game_info["url_slug"] = item["urlSlug"]
+                        free_game_info["namespace"] = item["namespace"]
+                        free_game_info["offer_id"] = item["id"]
+                        free_game_info["url"] = "https://www.epicgames.com/store/p/" + free_game_info["url_slug"]
+                        free_game_info["purchase_url"] = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(free_game_info["namespace"], free_game_info["offer_id"])
+                        free_game_infos.append(free_game_info)
         return free_game_infos
+    
+    async def _get_free_dlcs_async(self, namespace: str) -> List[Dict[str, str]]:
+        args = {
+            "query": "query searchStoreQuery($namespace: String, $category: String, $freeGame: Boolean, $count: Int){Catalog{searchStore(namespace: $namespace, category: $category, freeGame: $freeGame, count: $count){elements{title id namespace}}}}",
+            "variables": '{{"namespace": "{}", "category": "digitalextras/book|addons|digitalextras/soundtrack|digitalextras/video", "freeGame": true, "count": 1000}}'.format(namespace)
+        }
+        response = await self._get_json_async("https://www.epicgames.com/graphql", args)
+        free_items = []
+        for item in response["data"]["Catalog"]["searchStore"]["elements"]:
+            free_item = {}
+            free_item["title"] = item["title"]
+            free_item["offer_id"] = item["id"]
+            free_item["namespace"] = item["namespace"]
+            free_item["purchase_url"] = self._get_purchase_url(item["namespace"], item["id"])
+            free_items.append(free_item)
+        return free_items
     
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
@@ -442,13 +508,25 @@ class epicgames_claimer:
             raise ValueError("The returned data seems to be incorrect.")
         return owned
 
-    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
-        await self._open_browser_async()
+    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5, raise_error: bool = False) -> None:
+        for i in range(retries):
+            try:
+                if not self.browser_opened:
+                    await self._open_browser_async()
+                break
+            except Exception as e:
+                epicgames_claimer.log(str(e).replace("\n", " "), "warning")
+                if i == retries - 1:
+                    epicgames_claimer.log("Failed to open the browser.", "error")
+                    if raise_error:
+                        raise e
+                    return
         for i in range(retries):
             try:
                 if await self._need_login_async():
                     if interactive:
                         self.log("Need login.")
+                        self.notifications.notify("EpicGames Claimer: Need Login", "登录失效，需要重新登录。")
                         await self._close_browser_async()
                         email = input("Email: ")
                         password = getpass("Password: ")
@@ -467,14 +545,17 @@ class epicgames_claimer:
                         await self._close_browser_async()
                         exit(1)
                     await self._close_browser_async()
+                    if raise_error:
+                        raise e
                     return
         for i in range(retries):
             try:
                 claimed_game_titles = await self._claim_async()
                 if len(claimed_game_titles) > 0:
                     text = "{} has been claimed.".format(str(claimed_game_titles).strip("[]").replace("'", ""))
+                    text_zh = "{} 已被成功领取。".format(str(claimed_game_titles).strip("[]").replace("'", ""))
                     self.log(text)
-                    self.notifications.notify("EpicGames Claimer: Claim Successed", text)
+                    self.notifications.notify("EpicGames Claimer: Claim Successed", text_zh)
                 else:
                     self.log("All available weekly free games are already in your library.")
                 break
@@ -484,6 +565,8 @@ class epicgames_claimer:
                     self.log("Claim failed.", level="error")
                     await self._screenshot_async("screenshot.png")
                     await self._close_browser_async()
+                    if raise_error:
+                        raise e
                     return
         await self._close_browser_async()
     
@@ -539,6 +622,8 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
+    parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
+    parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -553,19 +638,25 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     return args
 
 
-def main() -> None:
-    args = get_args()
-    log("Claimer is starting...")
-    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey)
+def main(args: argparse.Namespace = None) -> None:
+    if args == None:    
+        args = get_args()
+    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, notifications=claimer_notifications)
-    if args.once == True:
-        log("Claimer started.")
+    if args.once:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
-        log("Claim completed.")
     else:
-        log("Claimer started.")
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
+
+
+# This is for Tencent Serverless
+def main_handler(event, context) -> None:
+    args = get_args()
+    args.once = True
+    args.data_dir = "/tmp/" + args.data_dir
+    args.chromium_path = "chrome-linux/chrome"
+    main(args)
 
 
 if __name__ == "__main__":
