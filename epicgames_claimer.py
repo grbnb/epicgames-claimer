@@ -86,6 +86,7 @@ class epicgames_claimer:
         self._loop = asyncio.get_event_loop()
         self.browser_opened = False
         self.claimer_notifications = claimer_notifications if claimer_notifications != None else notifications()
+        self.timeout = 240000
         self.page = None
         self.open_browser()
     
@@ -284,15 +285,15 @@ class epicgames_claimer:
             raise ValueError("Email can't be null.")
         if password == None or password == "":
             raise ValueError("Password can't be null.")
-        await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=120000, reload=False)
-        await self._click_async("#user", timeout=120000)
-        await self._click_async("#login-with-epic", timeout=120000)
+        await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=self.timeout, reload=False)
+        await self._click_async("#user", timeout=self.timeout)
+        await self._click_async("#login-with-epic", timeout=self.timeout)
         await self._type_async("#email", email)
         await self._type_async("#password", password)
         if not remember_me:
             await self._click_async("#rememberMe")
-        await self._click_async("#sign-in[tabindex='0']", timeout=120000)
-        login_result = await self._find_async(["#talon_frame_login_prod[style*=visible]", "div.MuiPaper-root[role=alert] h6[class*=subtitle1]", "input[name=code-input-0]", "#user"], timeout=90000)
+        await self._click_async("#sign-in[tabindex='0']", timeout=self.timeout)
+        login_result = await self._find_async(["#talon_frame_login_prod[style*=visible]", "div.MuiPaper-root[role=alert] h6[class*=subtitle1]", "input[name=code-input-0]", "#user"], timeout=self.timeout)
         if login_result == -1:
             raise TimeoutError("Chcek login result timeout.")
         elif login_result == 0:
@@ -305,7 +306,7 @@ class epicgames_claimer:
                 await self._type_async("input[name=code-input-0]", input("Verification code: "))
             else:
                 await self._type_async("input[name=code-input-0]", verifacation_code)
-            await self._click_async("#continue[tabindex='0']", timeout=120000)
+            await self._click_async("#continue[tabindex='0']", timeout=self.timeout)
             verify_result = await self._find_async(["#modal-content div[role*=alert]", "#user"])
             if verify_result == -1:
                 raise TimeoutError("Chcek login result timeout.")
@@ -318,17 +319,17 @@ class epicgames_claimer:
             page_content_json = await self._get_json_async("https://www.epicgames.com/account/v2/ajaxCheckLogin")
             return page_content_json["needLogin"]
         else:
-            await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=120000)
+            await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=self.timeout)
             if (await self._get_property_async("#user", "data-component")) == "SignedIn":
                 return False
             else:
                 return True
     
     async def _purchase_async(self, purchase_url: str) -> Tuple[int, str]:
-        await self._navigate_async(purchase_url, timeout=60000)
-        await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=60000)
+        await self._navigate_async(purchase_url, timeout=self.timeout)
+        await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=self.timeout)
         await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
-        result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=120000)
+        result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=self.timeout)
         if result == 0:
             message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
             return (result, message)
@@ -509,7 +510,7 @@ class epicgames_claimer:
             raise ValueError("The returned data seems to be incorrect.")
         return owned
 
-    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5, raise_error: bool = False) -> None:
+    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> None:
         for i in range(retries):
             try:
                 if not self.browser_opened:
@@ -592,10 +593,10 @@ class epicgames_claimer:
     def get_weekly_free_games(self) -> List[Dict[str, str]]:
         return self._loop.run_until_complete(self._get_weekly_free_games_async())
     
-    def run_once(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5, raise_error: bool = False) -> None:
+    def run_once(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> None:
         return self._loop.run_until_complete(self._run_once_async(interactive, email, password, verification_code, retries, raise_error))
     
-    def scheduled_run(self, at: str, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 5) -> None:
+    def scheduled_run(self, at: str, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3) -> None:
         self.add_quit_signal()
         schedule.every().day.at(at).do(self.run_once, interactive, email, password, verification_code, retries)
         while True:
