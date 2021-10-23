@@ -71,16 +71,17 @@ def update() -> None:
     except Exception as e:
         epicgames_claimer.log("Update epicgames_claimer.py failed. {}: {}".format(e.__class__.__name__, e), level="warning")
 
-def get_args_string(namespace: argparse.Namespace, exclude: List[str] = ["interactive", "data_dir", "once", "auto_update"]) -> str:
+def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["interactive", "data_dir", "once", "auto_update"]) -> str:
     args_string = " "
     for key, value in namespace.__dict__.items():
-        if not key in exclude:
-            if value == True:
-                args_string += "--{} ".format(key.replace("_", "-"))
-            elif value == False:
+        if not key in exclude_keys:
+            if value == None:
                 pass
-            elif value == None:
-                pass
+            elif type(value) == bool:
+                if value == True:
+                    args_string += "--{} ".format(key.replace("_", "-"))
+                elif value == False:
+                    pass
             else:
                 args_string += "--{} ".format(key.replace("_", "-"))
                 args_string += "{} ".format(value)
