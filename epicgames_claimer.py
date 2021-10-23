@@ -37,10 +37,12 @@ def log(text: str, level: str = "info") -> None:
 
 
 class notifications:
-    def __init__(self, serverchan_sendkey: str = None, bark_push_url: str = "https://api.day.app/push", bark_device_key: str = None) -> None:
+    def __init__(self, serverchan_sendkey: str = None, bark_push_url: str = "https://api.day.app/push", bark_device_key: str = None, telegram_bot_token: str = None, telegram_chat_id: str = None) -> None:
         self.serverchan_sendkey = serverchan_sendkey
         self.bark_push_url = bark_push_url
         self.bark_device_key = bark_device_key
+        self.telegram_bot_token = telegram_bot_token
+        self.telegram_chat_id = telegram_chat_id
         
     def push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
@@ -72,9 +74,25 @@ class notifications:
             except Exception as e:
                 log("Failed to push to Bark. {}".format(e), "error")
 
+    def push_telegram(self, content: str = None) -> None:
+        if self.telegram_bot_token:
+            try:
+                response = requests.post(
+                    url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage",
+                    data = {
+                        "chat_id": self.telegram_chat_id,
+                        "text": content
+                    }
+                )
+                log(f"Telegram Response HTTP Status Code: {response.status_code}")
+                log(f"Telegram Response HTTP Response Body: {response.content}")
+            except Exception as e:
+                log("Failed to push to Telegram. {}".format(e), "error")
+
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
         self.push_bark(title, content)
+        self.push_telegram(content)
 
 
 class epicgames_claimer:
@@ -676,6 +694,8 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
+    parser.add_argument("-ptt", "--push-telegram-bot-token", type=str, help="set Telegram bot token")
+    parser.add_argument("-pti", "--push-telegram-chat-id", type=str, help="set Telegram chat ID")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -693,7 +713,7 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
 def main(args: argparse.Namespace = None) -> None:
     if args == None:    
         args = get_args()
-    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key)
+    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries)
