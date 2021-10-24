@@ -101,21 +101,25 @@ docker run -it luminoleon/epicgames-claimer
     </details>
 
     <details>
-    <summary>添加Server酱通知推送</summary>
+    <summary>添加通知推送</summary>
 
-    ```bash
-    python3 main.py -ps <SendKey>
-    ```
+    * server酱
+        ```bash
+        python3 main.py -ps <SendKey>
+        ```
 
-    </details>
-    
-    <details>
-    <summary>添加Bark通知推送</summary>
+    * Bark
+        ```bash
+        python3 main.py -pbu <BarkPushUrl> -pbk <BarkDeviceKey>
+        ```
 
-    ```bash
-    python3 main.py -pbu <BarkPushUrl> -pbk <BarkDeviceKey>
-    ```
-	非自建服务端无需-pbu参数，默认采用官方推送地址https://api.day.app/push
+	    非自建服务端无需-pbu参数，默认采用官方推送地址https://api.day.app/push
+
+    * Telegram
+        ```bash
+        python3 main.py -ptt <TelegramBotToken> -pti <TelegramChatId>
+        ```
+
     </details>
 
 #### Python版本可选参数
