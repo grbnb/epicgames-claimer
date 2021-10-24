@@ -16,7 +16,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.5.5"
+__version__ = "1.5.6"
 
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
@@ -710,13 +710,13 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     return args
 
 
-def main(args: argparse.Namespace = None) -> None:
+def main(args: argparse.Namespace = None, raise_error: bool = False) -> None:
     if args == None:    
         args = get_args()
     claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
-        claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries)
+        claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     else:
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
@@ -730,7 +730,7 @@ def main_handler(event: Dict[str, str], context: Dict[str, str]) -> None:
     args = get_args()
     args.chromium_path = cwd + "/chrome-linux/chrome"
     args.once = True
-    main(args)
+    main(args, raise_error=True)
 
 
 if __name__ == "__main__":
