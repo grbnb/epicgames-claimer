@@ -38,6 +38,10 @@ Windows版本目前不支持自动更新。
 | `-ps`, `--push-serverchan-sendkey` | 设置Server酱SendKey      |                          |                      |
 | `-pbu`,`--push-bark-url` | 设置Bark服务端地址 | 默认: https://api.day.app/push |
 | `-pbk`,`--push-bark-device-key` | 设置Bark的DeviceKey |  |
+| `-ptt`, `--push-telegram-bot-token` | 设置Telegram bot token |  |
+| `-pti`, `--push-telegram-chat-id`   | 设置Telegram chat ID |  |
+| `-ns`, `--no-startup-notification` | 禁用脚本启动时推送一条通知 | |
+| `-v`, `--version` | 显示版本信息并退出 | |
 
 ### Docker
 
@@ -139,6 +143,8 @@ docker run -it luminoleon/epicgames-claimer
 | `-pbk`, `--push-bark-device-key`    | 设置Bark的DeviceKey |  |
 | `-ptt`, `--push-telegram-bot-token` | 设置Telegram bot token |  |
 | `-pti`, `--push-telegram-chat-id`   | 设置Telegram chat ID |  |
+| `-ns`, `--no-startup-notification` | 禁用脚本启动时推送一条通知 | |
+| `-v`, `--version` | 显示版本信息并退出 | |
 
 ## 部署
 
@@ -165,6 +171,8 @@ docker run -it luminoleon/epicgames-claimer
 | PUSH_SERVERCHAN_SENDKEY | 设置Server酱SendKey |                                |
 | PUSH_BARK_URL           | 设置Bark服务端地址   | 默认: https://api.day.app/push |
 | PUSH_BARK_DEVICE_KEY    | 设置Bark的DeviceKey |                                |
+| PUSH_TELEGRAM_BOT_TOKEN | 设置Telegram bot token |  |  |
+| PUSH_TELEGRAM_CHAT_ID   | 设置Telegram chat ID |  |  |
 
 #### 如何安装python模块和浏览器
 
