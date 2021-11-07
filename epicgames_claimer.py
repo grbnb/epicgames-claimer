@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import datetime
 import json
 import os
 import signal
@@ -19,6 +20,20 @@ from pyppeteer.network_manager import Request
 __version__ = "1.5.6"
 
 
+NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
+NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer：需要登录"
+NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer：领取成功"
+NOTIFICATION_TITLE_ERROR = "EpicGames Claimer：错误"
+NOTIFICATION_TITLE_TEST = "EpicGames Claimer：测试"
+NOTIFICATION_CONTENT_START = "如果你收到了此消息，表示你可以正常接收来自Epicgames Claimer的通知推送"
+NOTIFICATION_CONTENT_NEED_LOGIN = "未登录或登录信息已失效，请检查并尝试重新登录"
+NOTIFICATION_CONTENT_CLAIM_SUCCEED = "成功领取到项目："
+NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "打开浏览器失败："
+NOTIFICATION_CONTENT_LOGIN_FAILED = "登录失败："
+NOTIFICATION_CONTENT_CLAIM_FAILED = "领取失败："
+NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
+
+
 if "--enable-automation" in launcher.DEFAULT_ARGS:
     launcher.DEFAULT_ARGS.remove("--enable-automation")
 # Solve the issue of zombie processes
@@ -26,14 +41,19 @@ if "SIGCHLD" in dir(signal):
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
 
+def get_current_time() -> str:
+    current_time_string = str(datetime.datetime.now()).split(".")[0]
+    return current_time_string
+
+
 def log(text: str, level: str = "info") -> None:
-    localtime = time.asctime(time.localtime(time.time()))
+    localtime = get_current_time()
     if level == "info":
-        print("[{}] {}".format(localtime, text))
+        print("[{}  INFO] {}".format(localtime, text))
     elif level == "warning":
-        print("\033[33m[{}] Warning: {}\033[0m".format(localtime, text))
+        print("\033[33m[{}  WARN] {}\033[0m".format(localtime, text))
     elif level == "error":
-        print("\033[31m[{}] Error: {}\033[0m".format(localtime, text))
+        print("\033[31m[{} ERROR] {}\033[0m".format(localtime, text))
 
 
 class notifications:
@@ -53,7 +73,7 @@ class notifications:
                     data["desp"] = content
                 requests.post(url, data=data)
             except Exception as e:
-                log("Failed to push to ServerChan. {}".format(e), "error")
+                log("Failed to push to ServerChan: {}".format(e), "error")
 
     def push_bark(self, title: str, content: str = None) -> None:
         if self.bark_device_key:
@@ -72,27 +92,28 @@ class notifications:
                 log(f"Bark Response HTTP Status Code: {response.status_code}")
                 log(f"Bark Response HTTP Response Body: {response.content}")
             except Exception as e:
-                log("Failed to push to Bark. {}".format(e), "error")
+                log("Failed to push to Bark: {}".format(e), "error")
 
-    def push_telegram(self, content: str = None) -> None:
+    def push_telegram(self, title: str = None, content: str = None) -> None:
         if self.telegram_bot_token:
             try:
+                push_text = f"{title}\n\n{content}" if title else content
                 response = requests.post(
                     url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage",
                     data = {
                         "chat_id": self.telegram_chat_id,
-                        "text": content
+                        "text": push_text
                     }
                 )
                 log(f"Telegram Response HTTP Status Code: {response.status_code}")
                 log(f"Telegram Response HTTP Response Body: {response.content}")
             except Exception as e:
-                log("Failed to push to Telegram. {}".format(e), "error")
+                log("Failed to push to Telegram: {}".format(e), "error")
 
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
         self.push_bark(title, content)
-        self.push_telegram(content)
+        self.push_telegram(title, content)
 
 
 class epicgames_claimer:
@@ -110,16 +131,16 @@ class epicgames_claimer:
         self.open_browser()
     
     def log(self, text: str, level: str = "info") -> None:
-        localtime = time.asctime(time.localtime(time.time()))
+        localtime = get_current_time()
         if level == "info":
-            print("[{}] {}".format(localtime, text))
+            print("[{}  INFO] {}".format(localtime, text))
         elif level == "warning":
-            print("\033[33m[{}] Warning: {}\033[0m".format(localtime, text))
+            print("\033[33m[{}  WARN] {}\033[0m".format(localtime, text))
         elif level == "error":
-            print("\033[31m[{}] Error: {}\033[0m".format(localtime, text))
+            print("\033[31m[{} ERROR] {}\033[0m".format(localtime, text))
         elif level == "debug":
             if self.debug:
-                print("[{}] Debug: {}".format(localtime, text))
+                print("[{} DEBUG] {}".format(localtime, text))
 
     async def _headless_stealth_async(self):
         await self.page.evaluateOnNewDocument(
@@ -555,7 +576,7 @@ class epicgames_claimer:
         except:
             pass
     
-    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> None:
+    async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> Optional[List[str]]:
         for i in range(retries):
             try:
                 if not self.browser_opened:
@@ -566,7 +587,7 @@ class epicgames_claimer:
                     self.log("{}".format(e), level="warning")
                 else:
                     self.log(f"Failed to open the browser. {e}", "error")
-                    self.claimer_notifications.notify("EpicGames Claimer: 错误！", f"无法打开浏览器。 {e}")
+                    self.claimer_notifications.notify(NOTIFICATION_TITLE_ERROR, f"{NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED}{e}")
                     if raise_error:
                         await self._close_browser_async()
                         raise e
@@ -576,7 +597,7 @@ class epicgames_claimer:
                 if await self._need_login_async():
                     if interactive:
                         self.log("Need login.")
-                        self.claimer_notifications.notify("EpicGames Claimer: 需要登录", "登录失效，需要重新登录。")
+                        self.claimer_notifications.notify(NOTIFICATION_TITLE_NEED_LOGIN, NOTIFICATION_CONTENT_NEED_LOGIN)
                         await self._close_browser_async()
                         email = input("Email: ")
                         password = getpass("Password: ")
@@ -591,7 +612,7 @@ class epicgames_claimer:
                     self.log("{}".format(e), level="warning")
                 else:
                     self.log(f"Failed to login. {e}", "error")
-                    self.claimer_notifications.notify("EpicGames Claimer: 错误！", f"登录失败。{e}")
+                    self.claimer_notifications.notify(NOTIFICATION_TITLE_ERROR, f"{NOTIFICATION_CONTENT_LOGIN_FAILED}{e}")
                     if self.debug:
                         self.log(f"Current url: {self.page.url}", "debug")
                         webpage_content = await self._try_get_webpage_content_async()
@@ -609,10 +630,10 @@ class epicgames_claimer:
             try:
                 claimed_game_titles = await self._claim_async()
                 if len(claimed_game_titles) > 0:
-                    text = "{} has been claimed.".format(str(claimed_game_titles).strip("[]").replace("'", ""))
-                    text_zh = "{} 已被成功领取。".format(str(claimed_game_titles).strip("[]").replace("'", ""))
+                    claimed_game_titles_string = str(claimed_game_titles).strip("[]").replace("'", "")
+                    text = f"{claimed_game_titles} has been claimed."
                     self.log(text)
-                    self.claimer_notifications.notify("EpicGames Claimer: Claim Successed", text_zh)
+                    self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_game_titles_string}")
                 else:
                     self.log("All available weekly free games are already in your library.")
                 break
@@ -621,7 +642,7 @@ class epicgames_claimer:
                     self.log("{}".format(e), level="warning")
                 else:
                     self.log(f"Failed to claim free games. {e}", level="error")
-                    self.claimer_notifications.notify("EpicGames Claimer: 错误！", f"领取失败。{e}")
+                    self.claimer_notifications.notify(NOTIFICATION_TITLE_ERROR, f"{NOTIFICATION_CONTENT_CLAIM_FAILED}{e}")
                     if self.debug:
                         self.log(f"Current url: {self.page.url}", "debug")
                         webpage_content = await self._try_get_webpage_content_async()
@@ -633,6 +654,7 @@ class epicgames_claimer:
                         raise e
                     return
         await self._close_browser_async()
+        return claimed_game_titles
     
     def open_browser(self) -> None:
         return self._loop.run_until_complete(self._open_browser_async())
@@ -652,7 +674,7 @@ class epicgames_claimer:
     def get_weekly_free_games(self) -> List[Dict[str, str]]:
         return self._loop.run_until_complete(self._get_weekly_free_games_async())
     
-    def run_once(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> None:
+    def run_once(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> Optional[List[str]]:
         return self._loop.run_until_complete(self._run_once_async(interactive, email, password, verification_code, retries, raise_error))
     
     def scheduled_run(self, at: str, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3) -> None:
@@ -663,7 +685,7 @@ class epicgames_claimer:
             time.sleep(1)
     
 
-def get_args(include_auto_update: bool = False) -> argparse.Namespace:
+def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     def update_args_from_env(args: argparse.Namespace) -> argparse.Namespace:
         for key in args.__dict__.keys():
             env = os.environ.get(key.upper())
@@ -683,19 +705,24 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
     parser.add_argument("-c", "--chromium-path", type=str, help="set path to browser executable")
     parser.add_argument("-r", "--run-at", type=str, help="set daily check and claim time, format to HH:MM, default to the current time")
     parser.add_argument("-o", "--once", action="store_true", help="claim once then exit")
-    if include_auto_update:
+    if run_by_main_script:
         parser.add_argument("-a", "--auto-update", action="store_true", help="enable auto update")
+    if not run_by_main_script:
+        parser.add_argument("-e", "--external-schedule", action="store_true", help="run in external schedule mode")
     parser.add_argument("-u", "--email", "--username", type=str, help="set username/email")
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
     parser.add_argument("-d", "--debug", action="store_true", help="enable debug mode")
     parser.add_argument("-dt", "--debug-timeout", type=int, default=180000, help="set timeout in milliseconds")
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
+    parser.add_argument("-dp", "--debug-push-test", action="store_true", help="Push a notification for testing and quit")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
     parser.add_argument("-ptt", "--push-telegram-bot-token", type=str, help="set Telegram bot token")
     parser.add_argument("-pti", "--push-telegram-chat-id", type=str, help="set Telegram chat ID")
+    parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
+    parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -707,30 +734,41 @@ def get_args(include_auto_update: bool = False) -> argparse.Namespace:
         raise ValueError("Must input both username and password.")
     args.interactive = True if args.email == None else False
     args.data_dir = "User_Data/Default" if args.interactive else "User_Data/{}".format(args.email)
+    if args.debug_push_test:
+        test_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
+        test_notifications.notify(NOTIFICATION_TITLE_TEST, NOTIFICATION_CONTENT_TEST)
+        exit()
     return args
 
 
-def main(args: argparse.Namespace = None, raise_error: bool = False) -> None:
+def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional[List[str]]:
     if args == None:    
         args = get_args()
     claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
+        return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
+    elif args.external_schedule:
+        if not args.no_startup_notification:
+            claimer_notifications.notify(NOTIFICATION_TITLE_START, NOTIFICATION_CONTENT_START)
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     else:
+        if not args.no_startup_notification:
+            claimer_notifications.notify(NOTIFICATION_TITLE_START, NOTIFICATION_CONTENT_START)
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
 
 
 # This is for Tencent Serverless
-def main_handler(event: Dict[str, str], context: Dict[str, str]) -> None:
+def main_handler(event: Dict[str, str] = None, context: Dict[str, str] = None) -> None:
     cwd = os.getcwd()
     sys.path.append(cwd)
     os.chdir("/tmp")
     args = get_args()
     args.chromium_path = cwd + "/chrome-linux/chrome"
     args.once = True
-    main(args, raise_error=True)
+    args.no_push_at_start = True
+    return main(args, raise_error=True)
 
 
 if __name__ == "__main__":
