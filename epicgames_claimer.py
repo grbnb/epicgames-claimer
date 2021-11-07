@@ -276,12 +276,13 @@ class epicgames_claimer:
         else:
             raise ValueError
     
-    async def _find_and_not_find_async(self, find_selector: str, not_find_selector: str, timeout: int = 60000) -> int:
-        for _ in range(int(timeout / 1000 / 2)):
-            if await self._find_async(find_selector, timeout=1000):
-                return 0
-            elif not await self._find_async(not_find_selector, timeout=1000):
-                return 1
+    async def _find_and_not_find_async(self, find_selectors: List[str], not_find_selector: str, timeout: int = 180000) -> int:
+        for _ in range(int(timeout / 1000 / (len(find_selectors) + 1))):
+            for i in len(find_selectors):
+                if await self._find_async(find_selectors[i], timeout=1000):
+                    return i
+            if not await self._find_async(not_find_selector, timeout=1000):
+                return len(find_selectors)
         return -1
 
     async def _try_click_async(self, selector: str, sleep: Union[int, float] = 2) -> bool:
@@ -376,11 +377,13 @@ class epicgames_claimer:
         await self._navigate_async(purchase_url, timeout=self.timeout)
         await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=self.timeout)
         await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
-        result = await self._find_and_not_find_async("#purchase-app div[class*=alert]", "#purchase-app > div", timeout=self.timeout)
+        result = await self._find_and_not_find_async(["#purchase-app div[class*=alert]", "div.MuiDialog-root"], "#purchase-app > div", timeout=self.timeout)
         if result == 0:
             message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
             return (result, message)
         elif result == 1:
+            return (result, "CAPTCHA is required for unknown reasons.")
+        elif result == 2:
             return (result, "")
         elif result == -1:
             return (result, "Timed out.")
@@ -399,6 +402,8 @@ class epicgames_claimer:
                 if result == 0:
                     alert_text_list.append(message)
                 elif result == 1:
+                    alert_text_list.append(message)
+                elif result == 2:
                     claimed_game_titles.append(game["title"])
                 elif result == -1:
                     check_claim_result_failed.append(game["title"])
@@ -414,6 +419,8 @@ class epicgames_claimer:
                     if result == 0:
                         alert_text_list.append(message)
                     elif result == 1:
+                        alert_text_list.append(message)
+                    elif result == 2:
                         claimed_game_titles.append(dlc["title"])
                     elif result == -1:
                         check_claim_result_failed.append(dlc["title"])
