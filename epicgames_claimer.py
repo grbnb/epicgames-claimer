@@ -595,7 +595,7 @@ class epicgames_claimer:
 
     async def _get_game_infos_async(self, url_slug: str):
         game_infos = {}
-        response= await self._get_json_async("https://store-content.ak.epicgames.com/api/zh-CN/content/products/{}".format(url_slug))
+        response= await self._get_json_async("https://store-content.ak.epicgames.com/api/en-US/content/products/{}".format(url_slug))
         game_infos["product_name"] = response["productName"]
         game_infos["namespace"] = response["namespace"]
         game_infos["pages"] = []
