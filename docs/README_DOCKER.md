@@ -89,13 +89,14 @@ docker run -it luminoleon/epicgames-claimer
 | PUSH_BARK_DEVICE_KEY    | 设置Bark的DeviceKey  |         |                                |
 | PUSH_TELEGRAM_BOT_TOKEN | 设置Telegram bot token |  |  |
 | PUSH_TELEGRAM_CHAT_ID   | 设置Telegram chat ID |  |  |
+| PUSH_WECHAT_QYWX_AM     | 设置企业微信应用推送的QYWX_AM | | 参考：http://note.youdao.com/s/HMiudGkb |
 | NO_STARTUP_NOTIFICATION | 禁用脚本启动时推送通知 | | |
 
 ## 可选参数
 
 注意：对应的环境变量存在时，参数的值会被对应环境变量的值覆盖。
 
-使用方法: `docker run luminoleon/epicgames-claimer [-h] [-n] [-c CHROMIUM_PATH] [-r RUN_AT] [-o] [-a] [-u EMAIL] [-p PASSWORD] [-t VERIFICATION_CODE] [-d] [-dt DEBUG_TIMEOUT] [-dr DEBUG_RETRIES] [-dp] [-ps PUSH_SERVERCHAN_SENDKEY] [-pbu PUSH_BARK_URL] [-pbk PUSH_BARK_DEVICE_KEY] [-ptt PUSH_TELEGRAM_BOT_TOKEN] [-pti PUSH_TELEGRAM_CHAT_ID] [-ns] [-v]`
+使用方法: `docker run luminoleon/epicgames-claimer [-h] [-n] [-c CHROMIUM_PATH] [-r RUN_AT] [-o] [-a] [-u EMAIL] [-p PASSWORD] [-t VERIFICATION_CODE] [-d] [-dt DEBUG_TIMEOUT] [-dr DEBUG_RETRIES] [-dp] [-ps PUSH_SERVERCHAN_SENDKEY] [-pbu PUSH_BARK_URL] [-pbk PUSH_BARK_DEVICE_KEY] [-ptt PUSH_TELEGRAM_BOT_TOKEN] [-pti PUSH_TELEGRAM_CHAT_ID] [-ns] [-v] [-pwx PUSH_WECHAT_QYWX_AM]`
 
 | 参数                               | 说明                  | 备注                           |
 | ---------------------------------- | -------------------- | ------------------------------ |
@@ -111,3 +112,4 @@ docker run -it luminoleon/epicgames-claimer
 | `-ptt`, `--push-telegram-bot-token` | 设置Telegram bot token |  |
 | `-pti`, `--push-telegram-chat-id`   | 设置Telegram chat ID |  |
 | `-ns`, `--no-startup-notification` | 禁用脚本启动时推送通知 | |
+| `-pwx`, `--push-wechat-qywx-am`     | 设置企业微信应用推送的QYWX_AM | 参考：http://note.youdao.com/s/HMiudGkb |
