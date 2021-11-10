@@ -57,7 +57,8 @@ def log(text: str, level: str = "info") -> None:
     elif level == "error":
         print("\033[31m[{} ERROR] {}\033[0m".format(localtime, text))
 
-class wechat:
+
+class WeChat:
     def __init__(self, corpid, corpsecret, agentid) -> None:
         self.corpid = corpid
         self.corpsecret = corpsecret
@@ -112,7 +113,8 @@ class wechat:
         response = requests.post(url, send_msges)
         return response
 
-class notifications:
+
+class Notifications:
     def __init__(self, serverchan_sendkey: str = None, 
             bark_push_url: str = "https://api.day.app/push", 
             bark_device_key: str = None, 
@@ -187,7 +189,7 @@ class notifications:
                     media_id = qywx_am_ay[4]
                 except:
                     media_id = None
-                wx = wechat(corpid, corpsecret, agentid)
+                wx = WeChat(corpid, corpsecret, agentid)
                 if media_id != None:
                     response = wx.send_mpnews(title, content, media_id, touser)
                 else:
@@ -201,12 +203,10 @@ class notifications:
             except Exception as e:
                 log("Failed to send wechat message. ExceptErrmsg:{}".format(e), "error")
 
-
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
         self.push_bark(title, content)
         self.push_telegram(title, content)
-        self.push_telegram(content)
         self.push_wechat(title, content)
 
 
@@ -725,14 +725,15 @@ class EpicgamesClaimer:
             await run_open_browser()
             await run_login(interactive, email, password, verification_code)
             claimed_item_titles = await run_claim()
+            await self._close_browser_async()
         else:
             try:
                 await run_open_browser()
                 await run_login(interactive, email, password, verification_code)
                 claimed_item_titles = await run_claim()
+                await self._close_browser_async()
             except:
                 pass
-        await self._close_browser_async()
         return claimed_item_titles
     
     def open_browser(self) -> None:
@@ -798,9 +799,9 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
     parser.add_argument("-ptt", "--push-telegram-bot-token", type=str, help="set Telegram bot token")
     parser.add_argument("-pti", "--push-telegram-chat-id", type=str, help="set Telegram chat ID")
+    parser.add_argument("-pwx", "--push-wechat-qywx-am", type=str, help="set WeChat QYWX")
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
-    parser.add_argument("-pwx", "--push-wechat-qywx-am", type=str, help="set WeChat QYWX")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -822,8 +823,8 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
 def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional[List[str]]:
     if args == None:    
         args = get_args()
-    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id, wechat_qywx_am=args.push_wechat_qywx_am)
-    claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
+    claimer_notifications = Notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id, wechat_qywx_am=args.push_wechat_qywx_am)
+    claimer = EpicgamesClaimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     elif args.external_schedule:
