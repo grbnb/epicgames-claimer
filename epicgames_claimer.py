@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import time
+import re
 from getpass import getpass
 from json.decoder import JSONDecodeError
 from typing import Dict, List, Optional, Tuple, Union
@@ -55,14 +56,74 @@ def log(text: str, level: str = "info") -> None:
     elif level == "error":
         print("\033[31m[{} ERROR] {}\033[0m".format(localtime, text))
 
+class wechat:
+    def __init__(self, corpid, corpsecret, agentid) -> None:
+        self.corpid = corpid
+        self.corpsecret = corpsecret
+        self.agentid = agentid
+
+    def get_token(self) -> str:
+        url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={}&corpsecret={}".format(self.corpid, self.corpsecret)
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()["access_token"]
+        else:
+            log("Failed to get access_token.", level="error")
+            return ""
+    
+    def send_text(self, message, touser="@all") -> str:
+        url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}".format(self.get_token())
+        data = {
+            "touser": touser,
+            "msgtype": "text",
+            "agentid": self.agentid,
+            "text": {
+                "content": message
+            },
+            "safe": 0
+        }
+        send_msges = (bytes(json.dumps(data), 'utf-8'))
+        response = requests.post(url, send_msges)
+        return response
+    
+    def send_mpnews(self, title, message, media_id, touser="@all") -> str:
+        url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={}".format(self.get_token())
+        if not message:
+            message = title
+        data = {
+            "touser": touser,
+            "msgtype": "mpnews",
+            "agentid": self.agentid,
+            "mpnews": {
+                "articles": [
+                    {
+                        "title": title,
+                        "thumb_media_id": media_id,
+                        "content_source_url": "",
+                        "content": message.replace('\n', '<br/>'),
+                        "digest": message,
+                    }
+                ]
+            },
+            "safe": 0
+        }
+        send_msges = (bytes(json.dumps(data), 'utf-8'))
+        response = requests.post(url, send_msges)
+        return response
 
 class notifications:
-    def __init__(self, serverchan_sendkey: str = None, bark_push_url: str = "https://api.day.app/push", bark_device_key: str = None, telegram_bot_token: str = None, telegram_chat_id: str = None) -> None:
+    def __init__(self, serverchan_sendkey: str = None, 
+            bark_push_url: str = "https://api.day.app/push", 
+            bark_device_key: str = None, 
+            telegram_bot_token: str = None, 
+            telegram_chat_id: str = None,
+            wechat_qywx_am: str = None) -> None:
         self.serverchan_sendkey = serverchan_sendkey
         self.bark_push_url = bark_push_url
         self.bark_device_key = bark_device_key
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
+        self.wechat_qywx_am = wechat_qywx_am
         
     def push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
@@ -110,10 +171,42 @@ class notifications:
             except Exception as e:
                 log("Failed to push to Telegram: {}".format(e), "error")
 
+    def push_wechat(self, title: str, content: str = None) -> None:
+        if self.wechat_qywx_am:
+            try:
+                qywx_am_ay = re.split(',' , self.wechat_qywx_am)
+                if 4 < len(qywx_am_ay) > 5:
+                    log("WeChat AM is invalid.", level="error")
+                    return
+                corpid = qywx_am_ay[0]
+                corpsecret = qywx_am_ay[1]
+                touser = qywx_am_ay[2]
+                agentid = qywx_am_ay[3]
+                try: 
+                    media_id = qywx_am_ay[4]
+                except:
+                    media_id = None
+                wx = wechat(corpid, corpsecret, agentid)
+                if media_id != None:
+                    response = wx.send_mpnews(title, content, media_id, touser)
+                else:
+                    message = title + "\n\n" + content
+                    response = wx.send_text(message, touser)
+                response = response.json()
+                if response["errmsg"] == 'ok':
+                    log("Successfully sent wechat message.")
+                else:
+                    log("Failed to send wechat message. errmsg: {}".format(response['errmsg']), level="error")
+            except Exception as e:
+                log("Failed to send wechat message. ExceptErrmsg:{}".format(e), "error")
+
+
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
         self.push_bark(title, content)
         self.push_telegram(title, content)
+        self.push_telegram(content)
+        self.push_wechat(title, content)
 
 
 class epicgames_claimer:
@@ -329,7 +422,7 @@ class epicgames_claimer:
             raise ValueError("Email can't be null.")
         if password == None or password == "":
             raise ValueError("Password can't be null.")
-        await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=self.timeout, reload=False)
+        await self._navigate_async("https://www.epicgames.com/store/zh-CN/", timeout=self.timeout, reload=False)
         await self._click_async("#user", timeout=self.timeout)
         await self._click_async("#login-with-epic", timeout=self.timeout)
         await self._type_async("#email", email)
@@ -730,6 +823,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-pti", "--push-telegram-chat-id", type=str, help="set Telegram chat ID")
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
+    parser.add_argument("-pwx", "--push-wechat-qywx-am", type=str, help="set WeChat QYWX")
     args = parser.parse_args()
     args = update_args_from_env(args)
     if args.run_at == None:
@@ -751,7 +845,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
 def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional[List[str]]:
     if args == None:    
         args = get_args()
-    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
+    claimer_notifications = notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id, wechat_qywx_am=args.push_wechat_qywx_am)
     claimer = epicgames_claimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
