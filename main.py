@@ -128,10 +128,7 @@ def run_forever():
 
 def main() -> None:
     epicgames_claimer.log(MESSAGE_START)
-    if args.once:
-        run_once()
-    else:
-        run_forever()
+    run_once() if args.once else run_forever()
     epicgames_claimer.log(MESSAGE_END)
 
 
