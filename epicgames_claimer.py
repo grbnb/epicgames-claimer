@@ -18,7 +18,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.0"
+__version__ = "1.6.1"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -211,10 +211,11 @@ class Notifications:
 
 
 class Item:
-    def __init__(self, title: str, offer_id: str, namespace: str) -> None:
+    def __init__(self, title: str, offer_id: str, namespace: str, type: str) -> None:
         self.title = title
         self.offer_id = offer_id
         self.namespace = namespace
+        self.type = type
     
     @property
     def purchase_url(self) -> str:
@@ -581,9 +582,22 @@ class EpicgamesClaimer:
             if {"path": "freegames"} in item["categories"]:
                 if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
                     if item["offerType"] == "BASE_GAME":
-                        base_game = Item(item["title"], item["id"], item["namespace"])
+                        base_game = Item(item["title"], item["id"], item["namespace"], "base game")
                         base_games.append(base_game)
         return base_games
+    
+    async def _get_weekly_free_items_async(self) -> List[Item]:
+        response_text = await self._get_async("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions")
+        response_json = json.loads(response_text)
+        items = []
+        for item in response_json["data"]["Catalog"]["searchStore"]["elements"]:
+            if {"path": "freegames"} in item["categories"]:
+                if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
+                    if item["offerType"] == "BASE_GAME":
+                        items.append(Item(item["title"], item["id"], item["namespace"], "base game"))
+                    elif item["offerType"] == "DLC":
+                        items.append(Item(item["title"], item["id"], item["namespace"], "dlc"))
+        return items
     
     async def _get_free_dlcs_async(self, namespace: str) -> List[Item]:
         args = {
@@ -593,16 +607,33 @@ class EpicgamesClaimer:
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
         free_dlcs = []
         for item in response["data"]["Catalog"]["searchStore"]["elements"]:
-            free_dlc = Item(item["title"], item["id"], item["namespace"])
+            free_dlc = Item(item["title"], item["id"], item["namespace"], "dlc")
             free_dlcs.append(free_dlc)
         return free_dlcs
     
+    async def _get_free_base_game_async(self, namespace: str) -> Optional[Item]:
+        args = {
+            "query": "query searchStoreQuery($namespace: String, $category: String, $freeGame: Boolean, $count: Int){Catalog{searchStore(namespace: $namespace, category: $category, freeGame: $freeGame, count: $count){elements{title id namespace}}}}",
+            "variables": '{{"namespace": "{}", "category": "games/edition/base", "freeGame": true, "count": 1000}}'.format(namespace)
+        }
+        response = await self._get_json_async("https://www.epicgames.com/graphql", args)
+        if len(response["data"]["Catalog"]["searchStore"]["elements"]) > 0:
+            base_game_info = response["data"]["Catalog"]["searchStore"]["elements"][0]
+            base_game = Item(base_game_info["title"], base_game_info["id"], base_game_info["namespace"], "base game")
+            return base_game
+        
     async def _get_weekly_free_games_async(self) -> List[Game]:
-        free_base_games = await self._get_weekly_free_base_games_async()
+        free_items = await self._get_weekly_free_items_async()
         free_games = []
-        for base_game in free_base_games:
-            free_dlcs = await self._get_free_dlcs_async(base_game.namespace)
-            free_games.append(Game(base_game, free_dlcs))
+        for item in free_items:
+            if item.type == "base game":
+                free_dlcs = await self._get_free_dlcs_async(item.namespace)
+                free_games.append(Game(item, free_dlcs))
+            elif item.type == "dlc":
+                free_base_game = await self._get_free_base_game_async(item.namespace)
+                if free_base_game != None:
+                    free_dlcs = await self._get_free_dlcs_async(free_base_game.namespace)
+                    free_games.append(Game(free_base_game, free_dlcs))
         return free_games
     
     async def _claim_async(self, item: Item) -> None:
@@ -617,6 +648,8 @@ class EpicgamesClaimer:
             raise PermissionError("CAPTCHA is required for unknown reasons")
         elif result == -1:
             raise TimeoutError("Timeout when claiming")
+        else:
+            await asyncio.sleep(2)
     
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
@@ -713,7 +746,7 @@ class EpicgamesClaimer:
             if len(claimed_item_titles) != 0:
                 claimed_item_titles_string = ""
                 for title in claimed_item_titles:
-                    claimed_item_titles += f"{title}, "
+                    claimed_item_titles_string += f"{title}, "
                 claimed_item_titles_string.rstrip(", ")
                 self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles_string}")
             if len(claimed_item_titles) + len(owned_item_titles) < item_amount:
@@ -794,6 +827,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-dt", "--debug-timeout", type=int, default=180000, help="set timeout in milliseconds")
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
     parser.add_argument("-dp", "--debug-push-test", action="store_true", help="Push a notification for testing and quit")
+    parser.add_argument("-ds", "--debug-show-args", action="store_true", help="Push a notification for testing and quit")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
@@ -816,6 +850,9 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     if args.debug_push_test:
         test_notifications = Notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
         test_notifications.notify(NOTIFICATION_TITLE_TEST, NOTIFICATION_CONTENT_TEST)
+        exit()
+    if args.debug_show_args:
+        print(args)
         exit()
     return args
 
@@ -846,7 +883,6 @@ def main_handler(event: Dict[str, str] = None, context: Dict[str, str] = None) -
     args = get_args()
     args.chromium_path = cwd + "/chrome-linux/chrome"
     args.once = True
-    args.no_push_at_start = True
     claimed_item_titles = main(args, raise_error=True)
     result_message = NOTIFICATION_CONTENT_OWNED_ALL if len(claimed_item_titles) else f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles}"
     return result_message
