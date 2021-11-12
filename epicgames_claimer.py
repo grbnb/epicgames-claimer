@@ -18,7 +18,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.1"
+__version__ = "1.6.2"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -664,12 +664,12 @@ class EpicgamesClaimer:
 
     async def _is_owned_async(self, offer_id: str, namespace: str) -> bool:
         args = {
-            "query": "query launcherQuery($namespace: String!, $offerId: String!){Launcher{entitledOfferItems(namespace: $namespace, offerId: $offerId){entitledToAnyItemInOffer}}}",
+            "query": "query launcherQuery($namespace: String!, $offerId: String!){Launcher{entitledOfferItems(namespace: $namespace, offerId: $offerId){entitledToAllItemsInOffer}}}",
             "variables": "{{\"namespace\": \"{}\", \"offerId\": \"{}\"}}".format(namespace, offer_id)
         }
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
         try:
-            owned = response["data"]["Launcher"]["entitledOfferItems"]["entitledToAnyItemInOffer"]
+            owned = response["data"]["Launcher"]["entitledOfferItems"]["entitledToAllItemsInOffer"]
         except:
             raise ValueError("The returned data seems to be incorrect.")
         return owned
@@ -732,7 +732,7 @@ class EpicgamesClaimer:
                     claimed_item_titles.append(item.title)
                     self.log(f"Successfully claimed: {item.title}")
                 else:
-                    owned_item_titles.append(item)
+                    owned_item_titles.append(item.title)
             free_games = await self._get_weekly_free_games_async()
             item_amount = 0
             for game in free_games:
@@ -747,7 +747,7 @@ class EpicgamesClaimer:
                 claimed_item_titles_string = ""
                 for title in claimed_item_titles:
                     claimed_item_titles_string += f"{title}, "
-                claimed_item_titles_string.rstrip(", ")
+                claimed_item_titles_string = claimed_item_titles_string.rstrip(", ")
                 self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles_string}")
             if len(claimed_item_titles) + len(owned_item_titles) < item_amount:
                 raise PermissionError("Failed to claim some items")
@@ -758,15 +758,17 @@ class EpicgamesClaimer:
             await run_open_browser()
             await run_login(interactive, email, password, verification_code)
             claimed_item_titles = await run_claim()
-            await self._close_browser_async()
         else:
             try:
                 await run_open_browser()
                 await run_login(interactive, email, password, verification_code)
                 claimed_item_titles = await run_claim()
-                await self._close_browser_async()
             except:
                 pass
+        try:
+            await self._close_browser_async()
+        except:
+            pass
         return claimed_item_titles
     
     def open_browser(self) -> None:

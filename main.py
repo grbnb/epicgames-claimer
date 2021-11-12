@@ -5,7 +5,7 @@ import re
 import shutil
 import sys
 import time
-from typing import List
+from typing import List, Tuple
 
 import requests
 import schedule
@@ -16,15 +16,15 @@ CLAIMER_FILE_BAK_NAME = "epicgames_claimer.py.bak"
 
 
 API_TAGS = "https://api.github.com/repos/luminoleon/epicgames-claimer/tags"
-API_DOWNLOAD = "https://luminoleon.github.io/epicgames-claimer/epicgames_claimer.py"
+API_LATEST = "https://api.github.com/repos/luminoleon/epicgames-claimer/releases/latest"
 
 
 MESSAGE_START = "Claimer started"
 MESSAGE_END = "Claim completed"
 MESSAGE_UPDATING = "Found a new version. Updating ..."
-MESSAGE_UPDATE_FAILED = "Update failed"
+MESSAGE_UPDATE_FAILED = "Update failed: "
 MESSAGE_UPDATE_COMPLETED = "Update completed"
-MESSAGE_RUN_FAILED = f"Failed to run {CLAIMER_FILE_NAME}:"
+MESSAGE_RUN_FAILED = f"Failed to run {CLAIMER_FILE_NAME}: "
 
 
 try:
@@ -44,51 +44,45 @@ def get_current_version() -> List[str]:
     return version
 
 
-def get_latest_version(major: str) -> List[str]:
-    latest_version = f"{major}.0.0".split(".")
-    response = requests.get(API_TAGS).text
-    response_json = json.loads(response)
-    for item in response_json:
-        item_ver = item["name"].lstrip("Vv").split(".")
-        if item_ver[0] == latest_version[0]:
-            if int(item_ver[1]) > int(latest_version[1]):
-                latest_version = item_ver
-                latest_sha = item["commit"]["sha"]
-    for item in response_json:
-        item_ver = item["name"].lstrip("Vv").split(".")
-        if item_ver[0] == latest_version[0]:
-            if int(latest_version[1]) == int(item_ver[1]):
-                if int(item_ver[2]) > int(latest_version[2]):
-                    latest_version = item_ver
-                    latest_sha = item["commit"]["sha"]
-    return latest_version
+def get_latest_version() -> Tuple[List[str], str]:
+    response = json.loads(requests.get(API_LATEST).text)
+    tag_name = response["tag_name"]
+    version_string = re.findall(r"\d+\.(?:\d+\.)*\d+", tag_name)[0]
+    version = version_string.split(".")
+    url = ""
+    for item in response["assets"]:
+        if item["name"] == CLAIMER_FILE_NAME:
+            url = item["browser_download_url"]
+    return version, url
 
 
-def need_update() -> bool:
+def need_update() -> Tuple[bool, str]:
+    current_ver = get_current_version()
+    latest_ver, latest_download_url = get_latest_version()
     if not os.path.exists(CLAIMER_FILE_NAME):
         return True
-    local_ver = get_current_version()
-    latest_ver = get_latest_version(local_ver[0])
-    latest_ver_str = ".".join(latest_ver)
+    if latest_ver[0] != current_ver[0]:
+        return False, latest_download_url
     found_a_new_version = False
-    if int(latest_ver[1]) > int(local_ver[1]):
+    if int(latest_ver[1]) > int(current_ver[1]):
         found_a_new_version = True
-    elif int(latest_ver[1]) == int(local_ver[1]) and int(latest_ver[2]) > int(local_ver[2]):
+    elif int(latest_ver[1]) == int(current_ver[1]) and int(latest_ver[2]) > int(current_ver[2]):
         found_a_new_version = True
-    return found_a_new_version
+    return found_a_new_version, latest_download_url
 
 
 def update() -> None:
     try:
-        if need_update():
+        found_a_new_version, latest_download_url = need_update()
+        if found_a_new_version:
             shutil.copy(CLAIMER_FILE_NAME, CLAIMER_FILE_BAK_NAME)
-            response = requests.get(API_DOWNLOAD)
+            response = requests.get(latest_download_url)
             epicgames_claimer.log(MESSAGE_UPDATING)
             with open(CLAIMER_FILE_NAME,"wb") as f:
                 f.write(response.content)
             epicgames_claimer.log(MESSAGE_UPDATE_COMPLETED)
     except Exception as e:
-        epicgames_claimer.log(f"{MESSAGE_UPDATE_FAILED} {e}", level="warning")
+        epicgames_claimer.log(f"{MESSAGE_UPDATE_FAILED}{e}", level="warning")
 
 
 def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["interactive", "data_dir", "auto_update"]) -> str:
@@ -115,7 +109,7 @@ def run_once() -> None:
         os.system(f"{sys.executable} {CLAIMER_FILE_NAME} --external-schedule {get_args_string(args)}")
         args.no_startup_notification = True
     except Exception as e:
-        epicgames_claimer.log(f"{MESSAGE_RUN_FAILED} {e}", "error")
+        epicgames_claimer.log(f"{MESSAGE_RUN_FAILED}{e}", "error")
 
 
 def run_forever():
