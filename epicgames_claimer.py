@@ -1,15 +1,19 @@
 import argparse
 import asyncio
+import base64
 import datetime
+import hashlib
+import hmac
 import json
 import os
+import re
 import signal
 import sys
 import time
-import re
+import urllib
 from getpass import getpass
 from json.decoder import JSONDecodeError
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import requests
 import schedule
@@ -17,8 +21,7 @@ from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
-
-__version__ = "1.6.2"
+__version__ = "1.6.3"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -120,13 +123,17 @@ class Notifications:
             bark_device_key: str = None, 
             telegram_bot_token: str = None, 
             telegram_chat_id: str = None,
-            wechat_qywx_am: str = None) -> None:
+            wechat_qywx_am: str = None,
+            dingtalk_access_token: str = None,
+            dingtalk_secret: str = None) -> None:
         self.serverchan_sendkey = serverchan_sendkey
         self.bark_push_url = bark_push_url
         self.bark_device_key = bark_device_key
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
         self.wechat_qywx_am = wechat_qywx_am
+        self.dingtalk_access_token = dingtalk_access_token
+        self.dingtalk_secret = dingtalk_secret
         
     def push_serverchan(self, title: str, content: str = None) -> None:
         if self.serverchan_sendkey != None:
@@ -203,11 +210,43 @@ class Notifications:
             except Exception as e:
                 log("Failed to send wechat message. ExceptErrmsg:{}".format(e), "error")
 
+    def _get_dingtalk_timestamp_and_sign(self) -> Tuple[str, str]:
+        timestamp = str(round(time.time() * 1000))
+        secret = self.dingtalk_secret
+        secret_enc = secret.encode('utf-8')
+        string_to_sign = '{}\n{}'.format(timestamp, secret)
+        string_to_sign_enc = string_to_sign.encode('utf-8')
+        hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+        return timestamp, sign
+
+    def push_dingtalk(self, title: str, content: str) -> None:
+        if self.dingtalk_access_token:
+            try:
+                headers = {"Content-Type": "application/json; charset=utf-8"}
+                webhook = "https://oapi.dingtalk.com/robot/send"
+                params = {"access_token": self.dingtalk_access_token}
+                if self.dingtalk_secret:
+                    params["timestamp"], params["sign"] = self._get_dingtalk_timestamp_and_sign()
+                push_text = f"{title}\n\n{content}" if title else content
+                data = {"msgtype": "text", "text": {"content": push_text}}
+                response = requests.post(url = webhook, headers=headers, params=params, data=json.dumps(data))
+                response_json = response.json()
+                errcode = response_json["errcode"]
+                errmsg = response_json["errmsg"]
+                if errcode == 0:
+                    log("Successfully sent DingTalk message")
+                else:
+                    log(f"Failed to send Dingtalk message: {errmsg}", level="error")
+            except Exception as e:
+                log(f"Failed to send Dingtalk message: {e}", level="error")
+
     def notify(self, title: str, content: str = None) -> None:
         self.push_serverchan(title, content)
         self.push_bark(title, content)
         self.push_telegram(title, content)
         self.push_wechat(title, content)
+        self.push_dingtalk(title, content)
 
 
 class Item:
@@ -836,6 +875,8 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-ptt", "--push-telegram-bot-token", type=str, help="set Telegram bot token")
     parser.add_argument("-pti", "--push-telegram-chat-id", type=str, help="set Telegram chat ID")
     parser.add_argument("-pwx", "--push-wechat-qywx-am", type=str, help="set WeChat QYWX")
+    parser.add_argument("-pda", "--push-dingtalk-access-token", type=str, help="set DingTalk access token")
+    parser.add_argument("-pds", "--push-dingtalk-secret", type=str, help="set DingTalk secret")
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
     args = parser.parse_args()
@@ -862,7 +903,15 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
 def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional[List[str]]:
     if args == None:    
         args = get_args()
-    claimer_notifications = Notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id, wechat_qywx_am=args.push_wechat_qywx_am)
+    claimer_notifications = Notifications(
+        serverchan_sendkey=args.push_serverchan_sendkey, 
+        bark_push_url=args.push_bark_url, 
+        bark_device_key=args.push_bark_device_key, 
+        telegram_bot_token=args.push_telegram_bot_token, 
+        telegram_chat_id=args.push_telegram_chat_id, 
+        wechat_qywx_am=args.push_wechat_qywx_am, 
+        dingtalk_access_token=args.push_dingtalk_access_token,
+        dingtalk_secret=args.push_dingtalk_secret)
     claimer = EpicgamesClaimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
     if args.once:
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
