@@ -621,7 +621,7 @@ class EpicgamesClaimer:
             if {"path": "freegames"} in item["categories"]:
                 if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
                     if item["offerType"] == "BASE_GAME":
-                        base_game = Item(item["title"], item["id"], item["namespace"], "base game")
+                        base_game = Item(item["title"], item["id"], item["namespace"], "BASE_GAME")
                         base_games.append(base_game)
         return base_games
     
@@ -630,12 +630,12 @@ class EpicgamesClaimer:
         response_json = json.loads(response_text)
         items = []
         for item in response_json["data"]["Catalog"]["searchStore"]["elements"]:
-            if {"path": "freegames"} in item["categories"]:
-                if item["price"]["totalPrice"]["discountPrice"] == 0 and item["price"]["totalPrice"]["originalPrice"] != 0:
-                    if item["offerType"] == "BASE_GAME":
-                        items.append(Item(item["title"], item["id"], item["namespace"], "base game"))
-                    elif item["offerType"] == "DLC":
-                        items.append(Item(item["title"], item["id"], item["namespace"], "dlc"))
+            if item["status"] == "ACTIVE":
+                if {"path": "freegames"} in item["categories"]:
+                    if item["price"]["totalPrice"]["discountPrice"] == 0:
+                        if item["promotions"] != None:
+                            if item["promotions"]["promotionalOffers"] != [] and item["promotions"]["promotionalOffers"] != None:
+                                items.append(Item(item["title"], item["id"], item["namespace"], item["offerType"]))
         return items
     
     async def _get_free_dlcs_async(self, namespace: str) -> List[Item]:
@@ -646,7 +646,7 @@ class EpicgamesClaimer:
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
         free_dlcs = []
         for item in response["data"]["Catalog"]["searchStore"]["elements"]:
-            free_dlc = Item(item["title"], item["id"], item["namespace"], "dlc")
+            free_dlc = Item(item["title"], item["id"], item["namespace"], "DLC")
             free_dlcs.append(free_dlc)
         return free_dlcs
     
@@ -658,19 +658,26 @@ class EpicgamesClaimer:
         response = await self._get_json_async("https://www.epicgames.com/graphql", args)
         if len(response["data"]["Catalog"]["searchStore"]["elements"]) > 0:
             base_game_info = response["data"]["Catalog"]["searchStore"]["elements"][0]
-            base_game = Item(base_game_info["title"], base_game_info["id"], base_game_info["namespace"], "base game")
+            base_game = Item(base_game_info["title"], base_game_info["id"], base_game_info["namespace"], "BASE_GAME")
             return base_game
         
     async def _get_weekly_free_games_async(self) -> List[Game]:
         free_items = await self._get_weekly_free_items_async()
         free_games = []
         for item in free_items:
-            if item.type == "base game":
+            if item.type == "BASE_GAME":
                 free_dlcs = await self._get_free_dlcs_async(item.namespace)
                 free_games.append(Game(item, free_dlcs))
-            elif item.type == "dlc":
+            elif item.type == "DLC":
                 free_base_game = await self._get_free_base_game_async(item.namespace)
                 if free_base_game != None:
+                    free_dlcs = await self._get_free_dlcs_async(free_base_game.namespace)
+                    free_games.append(Game(free_base_game, free_dlcs))
+            else:
+                free_base_game = await self._get_free_base_game_async(item.namespace)
+                if free_base_game == None:
+                    free_games.append(Game(item))
+                else:
                     free_dlcs = await self._get_free_dlcs_async(free_base_game.namespace)
                     free_games.append(Game(free_base_game, free_dlcs))
         return free_games
