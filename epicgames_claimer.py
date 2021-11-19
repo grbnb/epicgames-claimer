@@ -21,7 +21,7 @@ from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
-__version__ = "1.6.3"
+__version__ = "1.6.4"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
