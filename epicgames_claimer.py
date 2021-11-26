@@ -21,7 +21,7 @@ from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
-__version__ = "1.6.4"
+__version__ = "1.6.5"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -625,8 +625,12 @@ class EpicgamesClaimer:
                         base_games.append(base_game)
         return base_games
     
-    async def _get_weekly_free_items_async(self) -> List[Item]:
-        response_text = await self._get_async("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions")
+    async def _get_weekly_free_items_async(self, user_country: str = "CN") -> List[Item]:
+        try:
+            user_country = await self._get_user_country_async()
+        except:
+            pass
+        response_text = await self._get_async(f"https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?country={user_country}&allowCountries={user_country}")
         response_json = json.loads(response_text)
         items = []
         for item in response_json["data"]["Catalog"]["searchStore"]["elements"]:
@@ -719,6 +723,14 @@ class EpicgamesClaimer:
         except:
             raise ValueError("The returned data seems to be incorrect.")
         return owned
+
+    async def _get_user_country_async(self) -> None:
+        response = await self._get_json_async("https://www.epicgames.com/account/v2/personal/ajaxGet")
+        try:
+            country = response["userInfo"]["country"]["value"]
+        except:
+            raise ValueError("The returned data seems to be incorrect.")
+        return country
 
     async def _try_get_webpage_content_async(self) -> Optional[str]:
         try:
