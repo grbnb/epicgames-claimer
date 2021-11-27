@@ -85,7 +85,7 @@ def update() -> None:
         epicgames_claimer.log(f"{MESSAGE_UPDATE_FAILED}{e}", level="warning")
 
 
-def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["interactive", "data_dir", "auto_update"]) -> str:
+def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["interactive", "data_dir", "auto_update", "external_schedule"]) -> str:
     args_string = ""
     for key, value in namespace.__dict__.items():
         if not key in exclude_keys:
@@ -98,7 +98,10 @@ def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["i
                     pass
             else:
                 args_string += "--{} ".format(key.replace("_", "-"))
-                args_string += "{} ".format(value)
+                if " " in str(value):
+                    args_string += "\"{}\" ".format(value)
+                else:
+                    args_string += "{} ".format(value)
     return args_string
 
 
