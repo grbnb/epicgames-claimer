@@ -21,7 +21,8 @@ from pyppeteer import launch, launcher
 from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
-__version__ = "1.6.5"
+
+__version__ = "1.6.6"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -273,16 +274,32 @@ class Game:
 
 
 class EpicgamesClaimer:
-    def __init__(self, data_dir: Optional[str] = None, headless: bool = True, sandbox: bool = False, chromium_path: Optional[str] = None, claimer_notifications: Notifications = None, timeout: int = 180000, debug: bool = False) -> None:
+    def __init__(
+        self, 
+        data_dir: Optional[str] = None, 
+        headless: bool = True, 
+        sandbox: bool = False, 
+        chromium_path: Optional[str] = None, 
+        claimer_notifications: Notifications = None, 
+        timeout: int = 180000, 
+        debug: bool = False,
+        cookies: str = None
+    ) -> None:
         self.data_dir = data_dir
         self.headless = headless
         self.sandbox = sandbox
         self.chromium_path = chromium_path
+        if "win" in launcher.current_platform() and self.chromium_path == None:
+            if os.path.exists("chrome-win32"):
+                self.chromium_path = "chrome-win32/chrome.exe"
+            elif os.path.exists("chrome-win"):
+                self.chromium_path = "chrome-win/chrome.exe"
         self._loop = asyncio.get_event_loop()
         self.browser_opened = False
         self.claimer_notifications = claimer_notifications if claimer_notifications != None else Notifications()
         self.timeout = timeout
         self.debug = debug
+        self.cookies = cookies
         self.page = None
         self.open_browser()
 
@@ -320,9 +337,6 @@ class EpicgamesClaimer:
 
     async def _open_browser_async(self) -> None:
         if not self.browser_opened:
-            if "win" in launcher.current_platform():
-                if self.chromium_path == None and os.path.exists("chrome-win32"):
-                    self.chromium_path = "chrome-win32/chrome.exe"
             browser_args = [
                 "--disable-infobars",
                 "--blink-settings=imagesEnabled=false",
@@ -344,6 +358,8 @@ class EpicgamesClaimer:
             if self.headless:
                 await self._headless_stealth_async()
             self.browser_opened = True
+            if self.cookies:
+                await self.load_cookies_async(self.cookies)
         # await self._refresh_cookies_async()
 
     async def _refresh_cookies_async(self) -> None:
@@ -829,6 +845,12 @@ class EpicgamesClaimer:
             pass
         return claimed_item_titles
     
+    async def load_cookies_async(self, path: str) -> None:
+        with open(path, "r") as cookies_file:
+            cookies = cookies_file.read()
+            for cookie in json.loads(cookies):
+                await self.page.setCookie(cookie)
+    
     def open_browser(self) -> None:
         return self._loop.run_until_complete(self._open_browser_async())
 
@@ -883,6 +905,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-u", "--email", "--username", type=str, help="set username/email")
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
+    parser.add_argument("--cookies", type=str, help="set path to cookies file")
     parser.add_argument("-d", "--debug", action="store_true", help="enable debug mode")
     parser.add_argument("-dt", "--debug-timeout", type=int, default=180000, help="set timeout in milliseconds")
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
@@ -930,8 +953,17 @@ def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional
         telegram_chat_id=args.push_telegram_chat_id, 
         wechat_qywx_am=args.push_wechat_qywx_am, 
         dingtalk_access_token=args.push_dingtalk_access_token,
-        dingtalk_secret=args.push_dingtalk_secret)
-    claimer = EpicgamesClaimer(args.data_dir, headless=not args.no_headless, chromium_path=args.chromium_path, claimer_notifications=claimer_notifications, timeout=args.debug_timeout, debug=args.debug)
+        dingtalk_secret=args.push_dingtalk_secret
+    )
+    claimer = EpicgamesClaimer(
+        args.data_dir, 
+        headless=not args.no_headless, 
+        chromium_path=args.chromium_path, 
+        claimer_notifications=claimer_notifications, 
+        timeout=args.debug_timeout, 
+        debug=args.debug,
+        cookies=args.cookies
+    )
     if args.once:
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     elif args.external_schedule:
