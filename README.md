@@ -36,6 +36,7 @@ Windows版本目前不支持自动更新。
 | `-p`, `--password`                     | 设置密码                       |                                             |
 | `-t`, `--verification-code`            | 设置双重验证代码               |                                             |
 | `--cookies`                            | 设置保存cookies信息文件路径    | 用`get_cookies.py`或者`get_cookies.exe`获取 |
+| `-l`, `--login`                        | 登录并创建User_Data后退出      | 需要在打开的浏览器里手动完成登录            |
 | `-ps`, `--push-serverchan-sendkey`     | 设置Server酱SendKey            |                                             |
 | `-pbu`,`--push-bark-url`               | 设置Bark服务端地址             | 默认: https://api.day.app/push              |
 | `-pbk`,`--push-bark-device-key`        | 设置Bark的DeviceKey            |                                             |
@@ -143,6 +144,7 @@ docker run -it luminoleon/epicgames-claimer
 | `-p`, `--password`                     | 设置密码                       |                                             |
 | `-t`, `--verification-code`            | 设置双重验证代码               |                                             |
 | `--cookies`                            | 设置保存cookies信息文件路径    | 用`get_cookies.py`或者`get_cookies.exe`获取 |
+| `-l`, `--login`                        | 登录并创建User_Data后退出      | 需要在打开的浏览器里手动完成登录            |
 | `-ps`, `--push-serverchan-sendkey`     | 设置Server酱SendKey            |                                             |
 | `-pbu`, `--push-bark-url`              | 设置Bark服务端地址             | 默认: https://api.day.app/push              |
 | `-pbk`, `--push-bark-device-key`       | 设置Bark的DeviceKey            |                                             |

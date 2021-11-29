@@ -22,7 +22,7 @@ from pyppeteer.element_handle import ElementHandle
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.6"
+__version__ = "1.6.7"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -283,11 +283,15 @@ class EpicgamesClaimer:
         claimer_notifications: Notifications = None, 
         timeout: int = 180000, 
         debug: bool = False,
-        cookies: str = None
+        cookies: str = None,
+        browser_args: List[str] = ["--disable-infobars", "--blink-settings=imagesEnabled=false", "--no-first-run", "--disable-gpu"]
     ) -> None:
         self.data_dir = data_dir
         self.headless = headless
+        self.browser_args = browser_args
         self.sandbox = sandbox
+        if not self.sandbox:
+            self.browser_args.append("--no-sandbox")
         self.chromium_path = chromium_path
         if "win" in launcher.current_platform() and self.chromium_path == None:
             if os.path.exists("chrome-win32"):
@@ -337,16 +341,8 @@ class EpicgamesClaimer:
 
     async def _open_browser_async(self) -> None:
         if not self.browser_opened:
-            browser_args = [
-                "--disable-infobars",
-                "--blink-settings=imagesEnabled=false",
-                "--no-first-run",
-                "--disable-gpu"
-            ]
-            if not self.sandbox:
-                browser_args.append("--no-sandbox")
             self.browser = await launch(
-                options={"args": browser_args, "headless": self.headless}, 
+                options={"args": self.browser_args, "headless": self.headless}, 
                 userDataDir=None if self.data_dir == None else os.path.abspath(self.data_dir), 
                 executablePath=self.chromium_path,
             )
@@ -360,6 +356,11 @@ class EpicgamesClaimer:
             self.browser_opened = True
             if self.cookies:
                 await self.load_cookies_async(self.cookies)
+            if self.data_dir != None:
+                cookies_path = os.path.join(self.data_dir, "cookies.json")
+                if os.path.exists(cookies_path):
+                    await self.load_cookies_async(cookies_path)
+                    os.remove(cookies_path)
         # await self._refresh_cookies_async()
 
     async def _refresh_cookies_async(self) -> None:
@@ -876,6 +877,31 @@ class EpicgamesClaimer:
             schedule.run_pending()
             time.sleep(1)
     
+    def save_cookies(self, path: str) -> None:
+        dir = os.path.dirname(path)
+        if not os.path.exists(dir):
+            os.mkdir(os.path.dirname(path))
+        with open(path, "w") as cookies_file:
+            self._loop.run_until_complete(self.page.cookies())
+            cookies = self._loop.run_until_complete(self.page.cookies())
+            cookies_file.write(json.dumps(cookies, separators=(",", ": "), indent=4))
+
+    def navigate(self, url: str, timeout: int = 30000, reload: bool = True) -> None:
+        return self._loop.run_until_complete(self._navigate_async(url, timeout, reload))
+    
+    def wait(self, selector: str, timeout: int = 30000) -> None:
+        return self._loop.run_until_complete(self._find_async(selector, timeout))
+    
+
+def login() -> None:
+    claimer = EpicgamesClaimer(headless=False, sandbox=True, browser_args=["--disable-infobars", "--no-first-run"])
+    claimer.log("Creating user data, please log in in the browser ...")
+    claimer.navigate("https://www.epicgames.com/store", timeout=0)
+    claimer.wait("#user[data-component=SignedIn]", timeout=0)
+    claimer.save_cookies("User_Data/Default/cookies.json")
+    claimer.log("Login successful")
+    claimer.close_browser()
+    
 
 def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     def update_args_from_env(args: argparse.Namespace) -> argparse.Namespace:
@@ -906,6 +932,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-p", "--password", type=str, help="set password")
     parser.add_argument("-t", "--verification-code", type=str, help="set verification code (2FA)")
     parser.add_argument("--cookies", type=str, help="set path to cookies file")
+    parser.add_argument("-l", "--login", action="store_true", help="create logged-in user data and quit")
     parser.add_argument("-d", "--debug", action="store_true", help="enable debug mode")
     parser.add_argument("-dt", "--debug-timeout", type=int, default=180000, help="set timeout in milliseconds")
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
@@ -938,6 +965,9 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
         exit()
     if args.debug_show_args:
         print(args)
+        exit()
+    if args.login:
+        login()
         exit()
     return args
 
