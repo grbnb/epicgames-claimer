@@ -715,15 +715,17 @@ class EpicgamesClaimer:
             ],
             timeout=self.timeout
         )
-        if result == 0:
+        if result == -1:
+            raise TimeoutError("Timeout when claiming")
+        elif result == 0:
             message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
             raise PermissionError(message)
         elif result == 1:
             raise PermissionError("CAPTCHA is required for unknown reasons")
-        elif result == -1:
-            raise TimeoutError("Timeout when claiming")
         else:
-            await asyncio.sleep(2)
+            owned = await self._is_owned_async(item.offer_id, item.namespace)
+            if not owned:
+                raise RuntimeError("An item was mistakenly considered to have been claimed")
     
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
