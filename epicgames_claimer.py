@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.7"
+__version__ = "1.6.8"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -285,7 +285,8 @@ class EpicgamesClaimer:
         timeout: int = 180000, 
         debug: bool = False,
         cookies: str = None,
-        browser_args: List[str] = ["--disable-infobars", "--blink-settings=imagesEnabled=false", "--no-first-run", "--disable-gpu"]
+        browser_args: List[str] = ["--disable-infobars", "--blink-settings=imagesEnabled=false", "--no-first-run", "--disable-gpu"],
+        push_when_owned_all = False
     ) -> None:
         self.data_dir = data_dir
         self.headless = headless
@@ -305,6 +306,7 @@ class EpicgamesClaimer:
         self.timeout = timeout
         self.debug = debug
         self.cookies = cookies
+        self.push_when_owned_all = push_when_owned_all
         self.page = None
         self.open_browser()
 
@@ -827,6 +829,8 @@ class EpicgamesClaimer:
                     await retried_claim(dlc)
             if len(owned_item_titles) == item_amount:
                 self.log("All available free games are already in your library")
+                if self.push_when_owned_all:
+                    self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, NOTIFICATION_CONTENT_OWNED_ALL)
             if len(claimed_item_titles) != 0:
                 claimed_item_titles_string = ""
                 for title in claimed_item_titles:
@@ -977,6 +981,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-pda", "--push-dingtalk-access-token", type=str, help="set DingTalk access token")
     parser.add_argument("-pds", "--push-dingtalk-secret", type=str, help="set DingTalk secret")
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
+    parser.add_argument("--push-when-owned-all", action="store_true", help="push a notification when all available weekly free games are already in the library")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
     args = parser.parse_args()
     args = update_args_from_env(args)
@@ -1016,13 +1021,14 @@ def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional
         dingtalk_secret=args.push_dingtalk_secret
     )
     claimer = EpicgamesClaimer(
-        args.data_dir, 
+        data_dir=args.data_dir, 
         headless=not args.no_headless, 
         chromium_path=args.chromium_path, 
         claimer_notifications=claimer_notifications, 
         timeout=args.debug_timeout, 
         debug=args.debug,
-        cookies=args.cookies
+        cookies=args.cookies,
+        push_when_owned_all=args.push_when_owned_all
     )
     if args.once:
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
@@ -1046,7 +1052,7 @@ def main_handler(event: Dict[str, str] = None, context: Dict[str, str] = None) -
     args.chromium_path = cwd + "/chrome-linux/chrome"
     args.once = True
     claimed_item_titles = main(args, raise_error=True)
-    result_message = NOTIFICATION_CONTENT_OWNED_ALL if len(claimed_item_titles) else f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles}"
+    result_message = f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles}"  if len(claimed_item_titles) else NOTIFICATION_CONTENT_OWNED_ALL
     return result_message
 
 
