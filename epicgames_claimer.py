@@ -506,7 +506,7 @@ class EpicgamesClaimer:
         if login_result == -1:
             raise TimeoutError("Chcek login result timeout.")
         elif login_result == 0:
-            raise PermissionError("CAPTCHA is required for unknown reasons.")
+            raise PermissionError("CAPTCHA is required for unknown reasons when logging in")
         elif login_result == 1:
             alert_text = await self._get_text_async("div.MuiPaper-root[role=alert] h6[class*=subtitle1]")
             raise PermissionError("From Epic Games: {}".format(alert_text))
@@ -723,7 +723,7 @@ class EpicgamesClaimer:
             message = await self._get_text_async("#purchase-app div[class*=alert]:not([disabled])")
             raise PermissionError(message)
         elif result == 1:
-            raise PermissionError("CAPTCHA is required for unknown reasons")
+            raise PermissionError("CAPTCHA is required for unknown reasons when claiming")
         else:
             owned = await self._is_owned_async(item.offer_id, item.namespace)
             if not owned:
