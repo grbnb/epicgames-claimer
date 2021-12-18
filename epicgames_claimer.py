@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.8"
+__version__ = "1.6.11"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -252,16 +252,21 @@ class Notifications:
 
 
 class Item:
-    def __init__(self, title: str, offer_id: str, namespace: str, type: str) -> None:
+    def __init__(self, title: str, offer_id: str, namespace: str, type: str, store_url_slug: str = None) -> None:
         self.title = title
         self.offer_id = offer_id
         self.namespace = namespace
         self.type = type
+        self._store_url_slug = store_url_slug
     
     @property
     def purchase_url(self) -> str:
         url = "https://www.epicgames.com/store/purchase?lang=en-US&namespace={}&offers={}".format(self.namespace, self.offer_id)
-        return url    
+        return url
+    
+    @property
+    def store_url(self) -> str:
+        return f"https://www.epicgames.com/store/en-US/p/{self._store_url_slug}" if self._store_url_slug else None
 
 
 class Game:
@@ -344,7 +349,7 @@ class EpicgamesClaimer:
                 executablePath=self.chromium_path,
             )
             self.page = (await self.browser.pages())[0]
-            await self.page.setViewport({"width": 1000, "height": 600})
+            await self.page.setViewport({"width": 600, "height": 1000})
             # Async callback functions aren't possible to use (Refer to https://github.com/pyppeteer/pyppeteer/issues/220).
             # await self.page.setRequestInterception(True)
             # self.page.on('request', self._intercept_request_async)
@@ -381,20 +386,17 @@ class EpicgamesClaimer:
         await asyncio.sleep(sleep)
         await self.page.type(selector, text)
 
-    async def _click_async(self, selector: str, sleep: Union[int, float] = 2, timeout: int = 30000, frame_index: int = 0) -> None:
-        if frame_index == 0:
-            await self.page.waitForSelector(selector, options={"timeout": timeout})
-            await asyncio.sleep(sleep)
-            await self.page.click(selector)
-        else:
-            await self.page.waitForSelector("iframe:nth-child({})".format(frame_index), options={"timeout": timeout})
-            frame = self.page.frames[frame_index]
-            await frame.waitForSelector(selector)
-            await asyncio.sleep(sleep)
-            await frame.click(selector)
+    async def _click_async(self, selector: str, sleep: Union[int, float] = 2, timeout: int = 30000, frame: Frame = None) -> None:
+        if frame == None:
+            frame = self.page
+        await frame.waitForSelector(selector, options={"timeout": timeout})
+        await asyncio.sleep(sleep)
+        await frame.click(selector)
 
-    async def _get_text_async(self, selector: str) -> str:
-        await self.page.waitForSelector(selector)
+    async def _get_text_async(self, selector: str, frame: Frame = None) -> str:
+        if frame == None:
+            frame = self.page
+        await self.page.waitForSelector(selector, options={"timeout": self.timeout})
         return await (await (await self.page.querySelector(selector)).getProperty("textContent")).jsonValue()
 
     async def _get_texts_async(self, selector: str) -> List[str]:
@@ -411,7 +413,7 @@ class EpicgamesClaimer:
         return await (await element.getProperty("textContent")).jsonValue()
 
     async def _get_property_async(self, selector: str, property: str) -> str:
-        await self.page.waitForSelector(selector)
+        await self.page.waitForSelector(selector, options={"timeout": self.timeout})
         return await self.page.evaluate("document.querySelector('{}').getAttribute('{}')".format(selector, property))
 
     async def _get_links_async(self, selector: str, filter_selector: str, filter_value: str) -> List[str]:
@@ -450,10 +452,12 @@ class EpicgamesClaimer:
         else:
             raise ValueError
     
-    async def _try_click_async(self, selector: str, sleep: Union[int, float] = 2) -> bool:
+    async def _try_click_async(self, selector: str, sleep: Union[int, float] = 2, frame: Frame = None) -> bool:
+        if frame == None:
+            frame = self.page
         try:
             await asyncio.sleep(sleep)
-            await self.page.click(selector)
+            await frame.click(selector)
             return True
         except:
             return False
@@ -465,14 +469,23 @@ class EpicgamesClaimer:
         except:
             return None
 
-    async def _wait_for_element_text_change_async(self, element: ElementHandle, text: str, timeout: int = 30) -> None:
+    async def _wait_for_text_change_async(self, selector: str, text: str) -> None:
+        if await self._get_text_async(selector) != text:
+            return
+        for _ in range(int(self.timeout / 1000)):
+            await asyncio.sleep(1)
+            if await self._get_text_async(selector) != text:
+                return
+        raise TimeoutError("Waiting for \"{}\" text content change failed: timeout {}ms exceeds".format(selector, self.timeout))
+
+    async def _wait_for_element_text_change_async(self, element: ElementHandle, text: str) -> None:
         if await self._get_element_text_async(element) != text:
             return
-        for _ in range(timeout):
+        for _ in range(int(self.timeout / 1000)):
             await asyncio.sleep(1)
             if await self._get_element_text_async(element) != text:
                 return
-        raise TimeoutError("Waiting for element \"{}\" text content change failed: timeout {}s exceeds".format(element, timeout))
+        raise TimeoutError("Waiting for element \"{}\" text content change failed: timeout {}ms exceeds".format(element, self.timeout))
 
     async def _navigate_async(self, url: str, timeout: int = 30000, reload: bool = True) -> None:
         if self.page.url == url and not reload:
@@ -495,7 +508,8 @@ class EpicgamesClaimer:
         if password == None or password == "":
             raise ValueError("Password can't be null.")
         await self._navigate_async("https://www.epicgames.com/store/en-US/", timeout=self.timeout, reload=False)
-        await self._click_async("#user", timeout=self.timeout)
+        await self._click_async("div.menu-icon", timeout=self.timeout)
+        await self._click_async("div.mobile-buttons a[href='/login']", timeout=self.timeout)
         await self._click_async("#login-with-epic", timeout=self.timeout)
         await self._type_async("#email", email)
         await self._type_async("#password", password)
@@ -648,7 +662,7 @@ class EpicgamesClaimer:
                     if item["price"]["totalPrice"]["discountPrice"] == 0:
                         if item["promotions"] != None:
                             if item["promotions"]["promotionalOffers"] != [] and item["promotions"]["promotionalOffers"] != None:
-                                items.append(Item(item["title"], item["id"], item["namespace"], item["offerType"]))
+                                items.append(Item(item["title"], item["id"], item["namespace"], item["offerType"], item["productSlug"]))
         return items
     
     async def _get_free_dlcs_async(self, namespace: str) -> List[Item]:
@@ -695,7 +709,7 @@ class EpicgamesClaimer:
                     free_games.append(Game(free_base_game, free_dlcs))
         return free_games
     
-    async def _claim_async(self, item: Item) -> None:
+    async def _claim_async(self, item: Item) -> bool:
         async def findx_async(items: List[Dict[str, Union[str, bool, int]]], timeout: int) -> int:
             for _ in range(int(timeout / 1000 / (len(items)))):
                 for i in range(0, len(items)):
@@ -706,13 +720,22 @@ class EpicgamesClaimer:
                         if not await self._find_async(items[i]["selector"], timeout=1000, frame=self.page.frames[items[i]["frame"]]):
                             return i
             return -1
-        await self._navigate_async(item.purchase_url, timeout=self.timeout)
+        await self._navigate_async(item.store_url, timeout=self.timeout)
+        await self._wait_for_text_change_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]", "Loading")
+        if await self._get_text_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]") == "In Library":
+            return False
+        await self._click_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]:not([aria-disabled])", timeout=self.timeout)
+        await self._try_click_async("div[data-component=makePlatformUnsupportedWarningStep] button[data-component=BaseButton")
+        await self._try_click_async("#agree")
+        await self._try_click_async("div[role=dialog] button[aria-disabled=false]")
+        purchase_url = "https://www.epicgames.com" + await self._get_property_async("#webPurchaseContainer iframe", "src")
+        await self._navigate_async(purchase_url)
         await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=self.timeout)
         await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
         result = await findx_async(
             [
                 {"selector": "#purchase-app div[class*=alert]", "exist": True, "frame": 0},
-                {"selector": "div.MuiDialog-root", "exist": True, "frame": 1},
+                {"selector": "#talon_frame_checkout_free_prod[style*=visible]", "exist": True, "frame": 0},
                 {"selector": "#purchase-app > div", "exist": False, "frame": 0}
             ],
             timeout=self.timeout
@@ -725,9 +748,11 @@ class EpicgamesClaimer:
         elif result == 1:
             raise PermissionError("CAPTCHA is required for unknown reasons when claiming")
         else:
-            owned = await self._is_owned_async(item.offer_id, item.namespace)
-            if not owned:
+            await self._navigate_async(item.store_url, timeout=self.timeout)
+            await self._wait_for_text_change_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]", "Loading")
+            if not await self._get_text_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]") == "In Library":
                 raise RuntimeError("An item was mistakenly considered to have been claimed")
+            return True
     
     async def _screenshot_async(self, path: str) -> None:
         await self.page.screenshot({"path": path})
@@ -740,6 +765,7 @@ class EpicgamesClaimer:
         if "SIGHUP" in dir(signal):
             signal.signal(signal.SIGHUP, self._quit)
 
+    # Broken
     async def _is_owned_async(self, offer_id: str, namespace: str) -> bool:
         args = {
             "query": "query launcherQuery($namespace: String!, $offerId: String!){Launcher{entitledOfferItems(namespace: $namespace, offerId: $offerId){entitledToAllItemsInOffer}}}",
@@ -812,21 +838,16 @@ class EpicgamesClaimer:
             claimed_item_titles = []
             owned_item_titles = []
             @self._async_auto_retry(retries, "Failed to claim one item: ", NOTIFICATION_CONTENT_CLAIM_FAILED, raise_error=False)
-            async def retried_claim(item: Item):
-                if not await self._is_owned_async(item.offer_id, item.namespace):
-                    await self._claim_async(item)
+            async def retried_claim(item: Item) -> bool:
+                if await self._claim_async(item):
                     claimed_item_titles.append(item.title)
                     self.log(f"Successfully claimed: {item.title}")
                 else:
                     owned_item_titles.append(item.title)
-            free_games = await self._get_weekly_free_games_async()
-            item_amount = 0
-            for game in free_games:
-                item_amount += game.item_amount
-            for game in free_games:
-                await retried_claim(game.base_game)
-                for dlc in game.dlcs:
-                    await retried_claim(dlc)
+            free_items = await self._get_weekly_free_items_async()
+            item_amount = len(free_items)
+            for item in free_items:
+                await retried_claim(item)
             if len(owned_item_titles) == item_amount:
                 self.log("All available free games are already in your library")
                 if self.push_when_owned_all:
