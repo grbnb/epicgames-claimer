@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.11"
+__version__ = "1.6.12"
 
 
 NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
@@ -721,6 +721,7 @@ class EpicgamesClaimer:
                             return i
             return -1
         await self._navigate_async(item.store_url, timeout=self.timeout)
+        await self._try_click_async("div[data-component=PDPAgeGate] Button", sleep=8)
         await self._wait_for_text_change_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]", "Loading")
         if await self._get_text_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]") == "In Library":
             return False
