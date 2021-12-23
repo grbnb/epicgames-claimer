@@ -1005,10 +1005,13 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
     parser.add_argument("--push-when-owned-all", action="store_true", help="push a notification when all available weekly free games are already in the library")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
+    parser.add_argument("-ce", "--cron-expression", type=str, help="set crontab expression if once is true to run schedule")
     args = parser.parse_args()
     args = update_args_from_env(args)
+    localtime = time.localtime()
+    if args.cron_expression is None:
+        args.cron_expression = "{0:02d} {1:02d} * * *".format(localtime.tm_min, localtime.tm_hour)
     if args.run_at == None:
-        localtime = time.localtime()
         args.run_at = "{0:02d}:{1:02d}".format(localtime.tm_hour, localtime.tm_min)
     if args.email != None and args.password == None:
         raise ValueError("Must input both username and password.")

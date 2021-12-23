@@ -144,6 +144,7 @@ Windows版本目前不支持自动更新。
 | `-ns`, `--no-startup-notification`     | 禁用脚本启动时推送一条通知                                 |                                                                                                                                             |
 | `--push-when-owned-all`                | 当执行领取过程中发现全部可用周免游戏都已领取时推送一条通知 | 默认没有游戏被领取时不会推送通知                                                                                                            |
 | `-v`, `--version`                      | 显示版本信息并退出                                         |                                                                                                                                             |
+| `-ce`, `--cron-expression`             | 使用crontab表达式运行定时任务                            |默认每天当前时间执行一次                                                                                                                                             |
 
 ## 部署
 
@@ -193,3 +194,6 @@ cp -r /root/.local/share/pyppeteer/local-chromium/*/chrome-linux .
 ## 已知问题
 
 Windows系统中途结束脚本可能导致浏览器进程留在后台。请检查任务管理器并手动结束浏览器进程。
+
+## crontab表达式
+[crontab表达式验证](https://www.matools.com/crontab)
