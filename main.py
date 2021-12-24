@@ -10,6 +10,9 @@ from typing import List, Tuple
 import requests
 import schedule
 
+# 禁用非安全请求警告
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 CLAIMER_FILE_NAME = "epicgames_claimer.py"
 CLAIMER_FILE_BAK_NAME = "epicgames_claimer.py.bak"
@@ -45,7 +48,7 @@ def get_current_version() -> List[str]:
 
 
 def get_latest_version() -> Tuple[List[str], str]:
-    response = json.loads(requests.get(API_LATEST).text)
+    response = json.loads(requests.get(API_LATEST, verify=False).text)
     tag_name = response["tag_name"]
     version_string = re.findall(r"\d+\.(?:\d+\.)*\d+", tag_name)[0]
     version = version_string.split(".")
@@ -76,7 +79,7 @@ def update() -> None:
         found_a_new_version, latest_download_url = need_update()
         if found_a_new_version:
             shutil.copy(CLAIMER_FILE_NAME, CLAIMER_FILE_BAK_NAME)
-            response = requests.get(latest_download_url)
+            response = requests.get(latest_download_url, verify=False)
             epicgames_claimer.log(MESSAGE_UPDATING)
             with open(CLAIMER_FILE_NAME,"wb") as f:
                 f.write(response.content)
