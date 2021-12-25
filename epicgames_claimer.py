@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.12"
+__version__ = "1.6.13"
 
 
 class texts:
@@ -42,19 +42,19 @@ class texts:
         NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
         NOTIFICATION_CONTENT_OWNED_ALL = "所有可领取的每周免费游戏已全部在库中"
     class en:
-        NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
-        NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer：需要登录"
-        NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer：领取成功"
-        NOTIFICATION_TITLE_ERROR = "EpicGames Claimer：错误"
-        NOTIFICATION_TITLE_TEST = "EpicGames Claimer：测试"
-        NOTIFICATION_CONTENT_START = "如果你收到了此消息，表示你可以正常接收来自Epicgames Claimer的通知推送"
-        NOTIFICATION_CONTENT_NEED_LOGIN = "未登录或登录信息已失效，请检查并尝试重新登录"
-        NOTIFICATION_CONTENT_CLAIM_SUCCEED = "成功领取到游戏："
-        NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "打开浏览器失败："
-        NOTIFICATION_CONTENT_LOGIN_FAILED = "登录失败："
-        NOTIFICATION_CONTENT_CLAIM_FAILED = "领取失败："
-        NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
-        NOTIFICATION_CONTENT_OWNED_ALL = "所有可领取的每周免费游戏已全部在库中"
+        NOTIFICATION_TITLE_START = "Epicgames Claimer: startup success"
+        NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer: login required"
+        NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer: successfully claimed"
+        NOTIFICATION_TITLE_ERROR = "EpicGames Claimer: error"
+        NOTIFICATION_TITLE_TEST = "EpicGames Claimer: test"
+        NOTIFICATION_CONTENT_START = "If you receive this message, it means that you can be notified from the Epicgames Claimer"
+        NOTIFICATION_CONTENT_NEED_LOGIN = "login information lost or expired, please try to re-login"
+        NOTIFICATION_CONTENT_CLAIM_SUCCEED = "successfully claimed the game: "
+        NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "error when opening the browser: "
+        NOTIFICATION_CONTENT_LOGIN_FAILED = "login failure: "
+        NOTIFICATION_CONTENT_CLAIM_FAILED = "claim failure: "
+        NOTIFICATION_CONTENT_TEST = "test if the notification setting is functional or not "
+        NOTIFICATION_CONTENT_OWNED_ALL = "All claimable weekly free games are already in the liabrary"
 
 
 local_texts = texts.en
