@@ -26,19 +26,38 @@ from pyppeteer.network_manager import Request
 __version__ = "1.6.12"
 
 
-NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
-NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer：需要登录"
-NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer：领取成功"
-NOTIFICATION_TITLE_ERROR = "EpicGames Claimer：错误"
-NOTIFICATION_TITLE_TEST = "EpicGames Claimer：测试"
-NOTIFICATION_CONTENT_START = "如果你收到了此消息，表示你可以正常接收来自Epicgames Claimer的通知推送"
-NOTIFICATION_CONTENT_NEED_LOGIN = "未登录或登录信息已失效，请检查并尝试重新登录"
-NOTIFICATION_CONTENT_CLAIM_SUCCEED = "成功领取到游戏："
-NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "打开浏览器失败："
-NOTIFICATION_CONTENT_LOGIN_FAILED = "登录失败："
-NOTIFICATION_CONTENT_CLAIM_FAILED = "领取失败："
-NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
-NOTIFICATION_CONTENT_OWNED_ALL = "所有可领取的每周免费游戏已全部在库中"
+class texts:
+    class zh:
+        NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
+        NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer：需要登录"
+        NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer：领取成功"
+        NOTIFICATION_TITLE_ERROR = "EpicGames Claimer：错误"
+        NOTIFICATION_TITLE_TEST = "EpicGames Claimer：测试"
+        NOTIFICATION_CONTENT_START = "如果你收到了此消息，表示你可以正常接收来自Epicgames Claimer的通知推送"
+        NOTIFICATION_CONTENT_NEED_LOGIN = "未登录或登录信息已失效，请检查并尝试重新登录"
+        NOTIFICATION_CONTENT_CLAIM_SUCCEED = "成功领取到游戏："
+        NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "打开浏览器失败："
+        NOTIFICATION_CONTENT_LOGIN_FAILED = "登录失败："
+        NOTIFICATION_CONTENT_CLAIM_FAILED = "领取失败："
+        NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
+        NOTIFICATION_CONTENT_OWNED_ALL = "所有可领取的每周免费游戏已全部在库中"
+    class en:
+        NOTIFICATION_TITLE_START = "Epicgames Claimer：启动成功"
+        NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer：需要登录"
+        NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer：领取成功"
+        NOTIFICATION_TITLE_ERROR = "EpicGames Claimer：错误"
+        NOTIFICATION_TITLE_TEST = "EpicGames Claimer：测试"
+        NOTIFICATION_CONTENT_START = "如果你收到了此消息，表示你可以正常接收来自Epicgames Claimer的通知推送"
+        NOTIFICATION_CONTENT_NEED_LOGIN = "未登录或登录信息已失效，请检查并尝试重新登录"
+        NOTIFICATION_CONTENT_CLAIM_SUCCEED = "成功领取到游戏："
+        NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "打开浏览器失败："
+        NOTIFICATION_CONTENT_LOGIN_FAILED = "登录失败："
+        NOTIFICATION_CONTENT_CLAIM_FAILED = "领取失败："
+        NOTIFICATION_CONTENT_TEST = "测试是否通知推送已被正确设置"
+        NOTIFICATION_CONTENT_OWNED_ALL = "所有可领取的每周免费游戏已全部在库中"
+
+
+local_texts = texts.en
 
 
 if "--enable-automation" in launcher.DEFAULT_ARGS:
@@ -807,7 +826,7 @@ class EpicgamesClaimer:
                             self.log(f"{e}", level="warning")
                         else:
                             self.log(f"{error_message}{e}", "error")
-                            self.claimer_notifications.notify(NOTIFICATION_TITLE_ERROR, f"{error_notification}{e}")
+                            self.claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_ERROR, f"{error_notification}{e}")
                             await self._screenshot_async("screenshot.png")
                             if raise_error:
                                 raise e
@@ -815,17 +834,17 @@ class EpicgamesClaimer:
         return retry
     
     async def _run_once_async(self, interactive: bool = True, email: str = None, password: str = None, verification_code: str = None, retries: int = 3, raise_error: bool = False) -> List[str]:
-        @self._async_auto_retry(retries, "Failed to open the browser: ", NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED)
+        @self._async_auto_retry(retries, "Failed to open the browser: ", local_texts.NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED)
         async def run_open_browser():
             if not self.browser_opened:
                 await self._open_browser_async()
         
-        @self._async_auto_retry(retries, "Failed to login: ", NOTIFICATION_CONTENT_LOGIN_FAILED)
+        @self._async_auto_retry(retries, "Failed to login: ", local_texts.NOTIFICATION_CONTENT_LOGIN_FAILED)
         async def run_login(interactive: bool, email: Optional[str], password: Optional[str], verification_code: str = None):
             if await self._need_login_async():
                 if interactive:
                     self.log("Need login")
-                    self.claimer_notifications.notify(NOTIFICATION_TITLE_NEED_LOGIN, NOTIFICATION_CONTENT_NEED_LOGIN)
+                    self.claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_NEED_LOGIN, local_texts.NOTIFICATION_CONTENT_NEED_LOGIN)
                     await self._close_browser_async()
                     email = input("Email: ")
                     password = getpass("Password: ")
@@ -838,7 +857,7 @@ class EpicgamesClaimer:
         async def run_claim() -> List[str]:
             claimed_item_titles = []
             owned_item_titles = []
-            @self._async_auto_retry(retries, "Failed to claim one item: ", NOTIFICATION_CONTENT_CLAIM_FAILED, raise_error=False)
+            @self._async_auto_retry(retries, "Failed to claim one item: ", local_texts.NOTIFICATION_CONTENT_CLAIM_FAILED, raise_error=False)
             async def retried_claim(item: Item) -> bool:
                 if await self._claim_async(item):
                     claimed_item_titles.append(item.title)
@@ -852,13 +871,13 @@ class EpicgamesClaimer:
             if len(owned_item_titles) == item_amount:
                 self.log("All available free games are already in your library")
                 if self.push_when_owned_all:
-                    self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, NOTIFICATION_CONTENT_OWNED_ALL)
+                    self.claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_CLAIM_SUCCEED, local_texts.NOTIFICATION_CONTENT_OWNED_ALL)
             if len(claimed_item_titles) != 0:
                 claimed_item_titles_string = ""
                 for title in claimed_item_titles:
                     claimed_item_titles_string += f"{title}, "
                 claimed_item_titles_string = claimed_item_titles_string.rstrip(", ")
-                self.claimer_notifications.notify(NOTIFICATION_TITLE_CLAIM_SUCCEED, f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles_string}")
+                self.claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_CLAIM_SUCCEED, f"{local_texts.NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles_string}")
             if len(claimed_item_titles) + len(owned_item_titles) < item_amount:
                 raise PermissionError("Failed to claim some items")
             return claimed_item_titles
@@ -994,6 +1013,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
     parser.add_argument("-dp", "--debug-push-test", action="store_true", help="Push a notification for testing and quit")
     parser.add_argument("-ds", "--debug-show-args", action="store_true", help="Push a notification for testing and quit")
+    parser.add_argument("--lang", type=str, default="zh", help="set notifications language")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
@@ -1007,6 +1027,11 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
     args = parser.parse_args()
     args = update_args_from_env(args)
+    global local_texts
+    if args.lang == "en":
+        local_texts = texts.en
+    elif args.lang == "zh":
+        local_texts = texts.zh
     if args.run_at == None:
         localtime = time.localtime()
         args.run_at = "{0:02d}:{1:02d}".format(localtime.tm_hour, localtime.tm_min)
@@ -1018,7 +1043,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     args.data_dir = "User_Data/Default" if args.interactive else "User_Data/{}".format(args.email)
     if args.debug_push_test:
         test_notifications = Notifications(serverchan_sendkey=args.push_serverchan_sendkey, bark_push_url=args.push_bark_url, bark_device_key=args.push_bark_device_key, telegram_bot_token=args.push_telegram_bot_token, telegram_chat_id=args.push_telegram_chat_id)
-        test_notifications.notify(NOTIFICATION_TITLE_TEST, NOTIFICATION_CONTENT_TEST)
+        test_notifications.notify(local_texts.NOTIFICATION_TITLE_TEST, local_texts.NOTIFICATION_CONTENT_TEST)
         exit()
     if args.debug_show_args:
         print(args)
@@ -1056,11 +1081,11 @@ def main(args: argparse.Namespace = None, raise_error: bool = False) -> Optional
         return claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     elif args.external_schedule:
         if not args.no_startup_notification:
-            claimer_notifications.notify(NOTIFICATION_TITLE_START, NOTIFICATION_CONTENT_START)
+            claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_START, local_texts.NOTIFICATION_CONTENT_START)
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries, raise_error=raise_error)
     else:
         if not args.no_startup_notification:
-            claimer_notifications.notify(NOTIFICATION_TITLE_START, NOTIFICATION_CONTENT_START)
+            claimer_notifications.notify(local_texts.NOTIFICATION_TITLE_START, local_texts.NOTIFICATION_CONTENT_START)
         claimer.run_once(args.interactive, args.email, args.password, args.verification_code, retries=args.debug_retries)
         claimer.scheduled_run(args.run_at, args.interactive, args.email, args.password, args.verification_code)
 
@@ -1074,7 +1099,7 @@ def main_handler(event: Dict[str, str] = None, context: Dict[str, str] = None) -
     args.chromium_path = cwd + "/chrome-linux/chrome"
     args.once = True
     claimed_item_titles = main(args, raise_error=True)
-    result_message = f"{NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles}"  if len(claimed_item_titles) else NOTIFICATION_CONTENT_OWNED_ALL
+    result_message = f"{local_texts.NOTIFICATION_CONTENT_CLAIM_SUCCEED}{claimed_item_titles}"  if len(claimed_item_titles) else local_texts.NOTIFICATION_CONTENT_OWNED_ALL
     return result_message
 
 
