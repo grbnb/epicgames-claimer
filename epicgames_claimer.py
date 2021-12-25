@@ -55,6 +55,20 @@ class texts:
         NOTIFICATION_CONTENT_CLAIM_FAILED = "Claim failure: "
         NOTIFICATION_CONTENT_TEST = "Test if the notification setting is functional or not "
         NOTIFICATION_CONTENT_OWNED_ALL = "All claimable weekly free games are already in the liabrary"
+    class ru:
+        NOTIFICATION_TITLE_START = "Epicgames Claimer: Запущен"
+        NOTIFICATION_TITLE_NEED_LOGIN = "Epicgames Claimer: Требуется логин"
+        NOTIFICATION_TITLE_CLAIM_SUCCEED = "Epicgames Claimer: Успешно собранно"
+        NOTIFICATION_TITLE_ERROR = "EpicGames Claimer: Ошибка"
+        NOTIFICATION_TITLE_TEST = "EpicGames Claimer: Test"
+        NOTIFICATION_CONTENT_START = "Если вы получили это сообщение, это означает, что вы можете получать уведомления от Epicgames Claimer"
+        NOTIFICATION_CONTENT_NEED_LOGIN = "Информация для входа потеряна или срок ее действия истек, попробуйте повторно войти"
+        NOTIFICATION_CONTENT_CLAIM_SUCCEED = "Успешно полученна игра: "
+        NOTIFICATION_CONTENT_OPEN_BROWSER_FAILED = "Ошибка при открытии браузера: "
+        NOTIFICATION_CONTENT_LOGIN_FAILED = "Ошибка входа: "
+        NOTIFICATION_CONTENT_CLAIM_FAILED = "Ошибка получения игры: "
+        NOTIFICATION_CONTENT_TEST = "Проверка, работает ли настройка уведомлений или нет "
+        NOTIFICATION_CONTENT_OWNED_ALL = "Все еженедельные бесплатные игры, которые можно получить, уже находятся в библиотеке."
 
 
 local_texts = texts.en
