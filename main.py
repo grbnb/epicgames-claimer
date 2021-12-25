@@ -1,4 +1,4 @@
-import argparse
+import importlib
 import json
 import os
 import re
@@ -9,8 +9,6 @@ from typing import List, Tuple
 
 import requests
 import schedule
-
-# 禁用非安全请求警告
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -38,6 +36,7 @@ except:
 
 
 args = epicgames_claimer.get_args(run_by_main_script=True)
+args.external_schedule = True
 
 
 def get_current_version() -> List[str]:
@@ -83,36 +82,17 @@ def update() -> None:
             epicgames_claimer.log(MESSAGE_UPDATING)
             with open(CLAIMER_FILE_NAME,"wb") as f:
                 f.write(response.content)
+            importlib.reload(epicgames_claimer)
             epicgames_claimer.log(MESSAGE_UPDATE_COMPLETED)
     except Exception as e:
         epicgames_claimer.log(f"{MESSAGE_UPDATE_FAILED}{e}", level="warning")
-
-
-def get_args_string(namespace: argparse.Namespace, exclude_keys: List[str] = ["interactive", "data_dir", "auto_update", "external_schedule"]) -> str:
-    args_string = ""
-    for key, value in namespace.__dict__.items():
-        if not key in exclude_keys:
-            if value == None:
-                pass
-            elif type(value) == bool:
-                if value == True:
-                    args_string += "--{} ".format(key.replace("_", "-"))
-                elif value == False:
-                    pass
-            else:
-                args_string += "--{} ".format(key.replace("_", "-"))
-                if " " in str(value):
-                    args_string += "\"{}\" ".format(value)
-                else:
-                    args_string += "{} ".format(value)
-    return args_string
 
 
 def run_once() -> None:
     try:
         if args.auto_update:
             update()
-        os.system(f"{sys.executable} {CLAIMER_FILE_NAME} --external-schedule {get_args_string(args)}")
+        epicgames_claimer.main(args)
         args.no_startup_notification = True
     except Exception as e:
         epicgames_claimer.log(f"{MESSAGE_RUN_FAILED}{e}", "error")
