@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.13"
+__version__ = "1.6.14"
 
 
 class texts:
@@ -1027,7 +1027,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-dr", "--debug-retries", type=int, default=3, help="set the number of retries")
     parser.add_argument("-dp", "--debug-push-test", action="store_true", help="Push a notification for testing and quit")
     parser.add_argument("-ds", "--debug-show-args", action="store_true", help="Push a notification for testing and quit")
-    parser.add_argument("--lang", type=str, default="zh", help="set notifications language")
+    parser.add_argument("--push-lang", type=str, default="zh", help="set notifications language")
     parser.add_argument("-ps", "--push-serverchan-sendkey", type=str, help="set ServerChan sendkey")
     parser.add_argument("-pbu", "--push-bark-url", type=str, default="https://api.day.app/push", help="set Bark server address")
     parser.add_argument("-pbk", "--push-bark-device-key", type=str, help="set Bark device key")
@@ -1042,10 +1042,8 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     args = parser.parse_args()
     args = update_args_from_env(args)
     global local_texts
-    if args.lang == "en":
-        local_texts = texts.en
-    elif args.lang == "zh":
-        local_texts = texts.zh
+    if args.push_lang:
+        local_texts = eval("texts." + args.push_lang)
     if args.run_at == None:
         localtime = time.localtime()
         args.run_at = "{0:02d}:{1:02d}".format(localtime.tm_hour, localtime.tm_min)
