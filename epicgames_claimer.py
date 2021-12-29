@@ -982,6 +982,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-o", "--once", action="store_true", help="claim once then exit")
     if run_by_main_script:
         parser.add_argument("-a", "--auto-update", action="store_true", help="enable auto update")
+        parser.add_argument("--cron", type=str, help="set cron expression")
     if not run_by_main_script:
         parser.add_argument("-e", "--external-schedule", action="store_true", help="run in external schedule mode")
     parser.add_argument("-u", "--email", "--username", type=str, help="set username/email")
@@ -1005,7 +1006,6 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-ns", "--no-startup-notification", action="store_true", help="disable pushing a notification at startup")
     parser.add_argument("--push-when-owned-all", action="store_true", help="push a notification when all available weekly free games are already in the library")
     parser.add_argument("-v", "--version", action="version", version=__version__, help="print version information and quit")
-    parser.add_argument("-ce", "--cron-expression", type=str, help="set crontab expression if once is true to run schedule")
     args = parser.parse_args()
     args = update_args_from_env(args)
     localtime = time.localtime()

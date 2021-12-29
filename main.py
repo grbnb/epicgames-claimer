@@ -5,9 +5,11 @@ import re
 import shutil
 import sys
 from typing import List, Tuple
-from apscheduler.schedulers.blocking import BlockingScheduler
+
 import requests
+from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+
 
 CLAIMER_FILE_NAME = "epicgames_claimer.py"
 CLAIMER_FILE_BAK_NAME = "epicgames_claimer.py.bak"
