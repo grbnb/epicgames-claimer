@@ -4,13 +4,16 @@ import os
 import re
 import shutil
 import sys
-import time
 from typing import List, Tuple
 
 import requests
-import schedule
 import urllib3
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 CLAIMER_FILE_NAME = "epicgames_claimer.py"
 CLAIMER_FILE_BAK_NAME = "epicgames_claimer.py.bak"
@@ -100,10 +103,11 @@ def run_once() -> None:
 
 def run_forever():
     run_once()
-    schedule.every().day.at(args.run_at).do(run_once)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    cron_expression = args.cron_expression
+    epicgames_claimer.log(f"start schedule use crontab: {cron_expression}")
+    cron_schedule = BlockingScheduler()
+    cron_schedule.add_job(run_once, CronTrigger.from_crontab(cron_expression))
+    cron_schedule.start()
 
 
 def main() -> None:

@@ -23,7 +23,7 @@ from pyppeteer.frame_manager import Frame
 from pyppeteer.network_manager import Request
 
 
-__version__ = "1.6.14"
+__version__ = "1.6.15"
 
 
 class texts:
@@ -1015,6 +1015,7 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     parser.add_argument("-o", "--once", action="store_true", help="claim once then exit")
     if run_by_main_script:
         parser.add_argument("-a", "--auto-update", action="store_true", help="enable auto update")
+        parser.add_argument("--cron", type=str, help="set cron expression")
     if not run_by_main_script:
         parser.add_argument("-e", "--external-schedule", action="store_true", help="run in external schedule mode")
     parser.add_argument("-u", "--email", "--username", type=str, help="set username/email")
@@ -1044,8 +1045,10 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     global local_texts
     if args.push_lang:
         local_texts = eval("texts." + args.push_lang)
+    localtime = time.localtime()
+    if args.cron_expression is None:
+        args.cron_expression = "{0:02d} {1:02d} * * *".format(localtime.tm_min, localtime.tm_hour)
     if args.run_at == None:
-        localtime = time.localtime()
         args.run_at = "{0:02d}:{1:02d}".format(localtime.tm_hour, localtime.tm_min)
     if args.email != None and args.password == None:
         raise ValueError("Must input both username and password.")
