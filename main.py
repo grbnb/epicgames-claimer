@@ -102,12 +102,15 @@ def run_once() -> None:
 
 
 def run_forever():
-    run_once()
-    cron_expression = args.cron_expression
+    cron_expression = args.cron
     epicgames_claimer.log(f"start schedule use crontab: {cron_expression}")
+    run_once()
     cron_schedule = BlockingScheduler()
     cron_schedule.add_job(run_once, CronTrigger.from_crontab(cron_expression))
-    cron_schedule.start()
+    try:
+        cron_schedule.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 
 def main() -> None:

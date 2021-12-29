@@ -1046,8 +1046,13 @@ def get_args(run_by_main_script: bool = False) -> argparse.Namespace:
     if args.push_lang:
         local_texts = eval("texts." + args.push_lang)
     localtime = time.localtime()
-    if args.cron_expression is None:
-        args.cron_expression = "{0:02d} {1:02d} * * *".format(localtime.tm_min, localtime.tm_hour)
+    if run_by_main_script:
+        if args.cron is None:
+            if args.run_at == None:
+                args.cron = "{0:02d} {1:02d} * * *".format(localtime.tm_min, localtime.tm_hour)
+            else:
+                hour, minute = args.run_at.split(":")
+                args.cron = "{0} {1} * * *".format(minute, hour)
     if args.run_at == None:
         args.run_at = "{0:02d}:{1:02d}".format(localtime.tm_hour, localtime.tm_min)
     if args.email != None and args.password == None:
