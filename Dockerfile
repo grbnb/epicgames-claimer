@@ -6,17 +6,16 @@ ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Shanghai
 
 COPY requirements.txt /
 
-RUN apt update \
+RUN apt-get update \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
-    && apt install -y tzdata \
-    && apt install -y python3 python3-pip \
-    && apt install -y chromium-browser \
-    && pip3 install --no-cache-dir -r requirements.txt \        
-    && apt purge -y python3-pip \
-    && apt autoremove -y \
-    && apt install -y python3-idna \
-    && apt clean \
-    && apt autoclean \
+    && apt-get install -y --no-install-recommends tzdata python3 python3-pip chromium-browser \
+    && apt-get install -y --no-install-recommends python3-setuptools python3-apscheduler \
+    && pip3 install --no-cache-dir -r requirements.txt \
+    && apt-get purge -y python3-pip \
+    && apt-get autoremove -y \
+    && apt-get install -y python3-idna \
+    && apt-get clean \
+    && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY *.py /
