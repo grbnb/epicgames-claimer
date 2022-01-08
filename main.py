@@ -3,12 +3,14 @@ import json
 import os
 import re
 import shutil
+import signal
 import sys
+import time
 from typing import List, Tuple
 
 import requests
 import urllib3
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 
@@ -95,7 +97,9 @@ def run_once() -> None:
     try:
         if args.auto_update:
             update()
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
         epicgames_claimer.main(args)
+        signal.signal(signal.SIGINT, original_sigint_handler)
         args.no_startup_notification = True
     except Exception as e:
         epicgames_claimer.log(f"{MESSAGE_RUN_FAILED}{e}", "error")
@@ -103,13 +107,16 @@ def run_once() -> None:
 
 def run_forever():
     cron_expression = args.cron
-    epicgames_claimer.log(f"start schedule use crontab: {cron_expression}")
-    run_once()
-    cron_schedule = BlockingScheduler()
+    epicgames_claimer.log(f"Start schedule use crontab: {cron_expression}")
+    cron_schedule = BackgroundScheduler()
     cron_schedule.add_job(run_once, CronTrigger.from_crontab(cron_expression))
+    run_once()
     try:
         cron_schedule.start()
-    except (KeyboardInterrupt, SystemExit):
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        cron_schedule.shutdown(wait=False)
         pass
 
 
