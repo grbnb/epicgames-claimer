@@ -12,10 +12,6 @@
 
 十分简单易用，使用过程中几乎不需要输入或修改任何参数。
 
-如果你觉得本项目对你有帮助，请star本项目。
-
-蓝奏云： <https://luminoleon.lanzoui.com/b02iby4lg> 密码:15k1
-
 ## 开始
 
 ### Windows

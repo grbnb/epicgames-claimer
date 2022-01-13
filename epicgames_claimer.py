@@ -760,12 +760,12 @@ class EpicgamesClaimer:
             return False
         await self._click_async("div[data-component=DesktopSticky] button[data-testid=purchase-cta-button]:not([aria-disabled])", timeout=self.timeout)
         await self._try_click_async("div[data-component=makePlatformUnsupportedWarningStep] button[data-component=BaseButton")
-        await self._try_click_async("#agree")
+        # await self._try_click_async("#agree")
         await self._try_click_async("div[role=dialog] button[aria-disabled=false]")
         purchase_url = "https://www.epicgames.com" + await self._get_property_async("#webPurchaseContainer iframe", "src")
         await self._navigate_async(purchase_url)
         await self._click_async("#purchase-app button[class*=confirm]:not([disabled])", timeout=self.timeout)
-        await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
+        # await self._try_click_async("#purchaseAppContainer div.payment-overlay button.payment-btn--primary")
         result = await findx_async(
             [
                 {"selector": "#purchase-app div[class*=alert]", "exist": True, "frame": 0},
