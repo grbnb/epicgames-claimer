@@ -180,6 +180,7 @@ Windows版本目前不支持自动更新。
 使用在线编辑器中的集成终端打开src目录，运行以下命令（点（`.`）是命令的一部分，请不要忽略它们）。
 
 ```bash
+cd src
 pip3 install -r requirements.txt -t .
 mv bin/pyppeteer-install .
 ./pyppeteer-install
